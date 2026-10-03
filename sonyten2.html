@@ -11,13 +11,11 @@
   /* ---------- Watermark settings ---------- */
   :root {
     --wm-size: 14%;      /* width of the watermark relative to the player */
-    --wm-opacity: .85;
+    --wm-opacity: 0.3;   /* 30% opacity */
     --bg: #09080a;
     --gold: #d4af37;
     --line: #2b262d;
   }
-  /* Position: pick one of  top: 0; right: 0;  /  top: 0; left: 0;  /  bottom: 0; right: 0;  /  bottom: 0; left: 0; */
-  .wm { top: 0; right: 0; }
   /* ---------------------------------------- */
 
   * { box-sizing: border-box; }
@@ -36,8 +34,17 @@
   .stage iframe { position: absolute; inset: 0; width: 100% !important; height: 100% !important; border: 0 !important; }
 
   .wm {
-    position: absolute; z-index: 5; pointer-events: none; user-select: none; -webkit-user-drag: none;
-    width: var(--wm-size); height: auto; opacity: var(--wm-opacity); margin: 2.2%;
+    position: absolute; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%);
+    z-index: 5; 
+    pointer-events: none; 
+    user-select: none; 
+    -webkit-user-drag: none;
+    width: var(--wm-size); 
+    height: auto; 
+    opacity: var(--wm-opacity); 
   }
 
   button { font: 500 14px Barlow, sans-serif; color: #ece6d6; background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 8px 16px; cursor: pointer; }
