@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500&display=swap" rel="stylesheet">
+<style>
+  /* ---------- Watermark settings ---------- */
+  :root {
+    --wm-size: 14%;      /* width of the watermark relative to the player */
+    --wm-opacity: 0.3;   /* 30% opacity */
+    --bg: #09080a;
+    --gold: #d4af37;
+    --line: #2b262d;
+  }
+  /* ---------------------------------------- */
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); font-family: Barlow, system-ui, sans-serif; }
+  body { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; gap: 10px; }
+
+  .stage {
+    position: relative; background: #000; overflow: hidden; aspect-ratio: 16 / 9;
+    width: min(100%, calc((100dvh - 76px) * 16 / 9));
+    border: 1px solid var(--line);
+  }
+  .stage:fullscreen, .stage.pseudo-fs { width: 100vw; height: 100dvh; aspect-ratio: auto; border: 0; }
+  .stage.pseudo-fs { position: fixed; inset: 0; z-index: 999; }
+
+  /* Whatever iframe you paste fills the stage */
+  .stage iframe { position: absolute; inset: 0; width: 100% !important; height: 100% !important; border: 0 !important; }
+
+  .wm {
+    position: absolute; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%);
+    z-index: 5; 
+    pointer-events: none; 
+    user-select: none; 
+    -webkit-user-drag: none;
+    width: var(--wm-size); 
+    height: auto; 
+    opacity: var(--wm-opacity); 
+  }
+
+  button { font: 500 14px Barlow, sans-serif; color: #ece6d6; background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 8px 16px; cursor: pointer; }
+  button:hover { border-color: var(--gold); color: var(--gold); }
+  button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+
+  <!-- ============ PASTE YOUR IFRAME BELOW THIS LINE ============ -->
+<iframe src="https://dlive.sx/stream/stream-637.php" width="100%" height="100%" style="border:0;" allowfullscreen></iframe>
+  <!-- ============ PASTE YOUR IFRAME ABOVE THIS LINE ============ -->
+
+  <img class="wm" src="https://i.ibb.co/fYfDkpyz/file-00000000b894820a90c1d95f7fe249f4.png" alt="" draggable="false" onerror="this.remove()">
+</div>
+
+<button id="fsBtn" type="button">Fullscreen</button>
+
+<script>
+  /* true  = the player's own fullscreen button is disabled, so viewers use the Fullscreen button above
+             and your watermark always stays visible.
+     false = leave the player's own fullscreen alone (the watermark disappears when it is used). */
+  const LOCK_FULLSCREEN = true;
+
+  const stage = document.getElementById("stage");
+  const fsBtn = document.getElementById("fsBtn");
+
+  if (LOCK_FULLSCREEN) {
+    stage.querySelectorAll("iframe").forEach(f => {
+      f.removeAttribute("allowfullscreen");
+      f.removeAttribute("webkitallowfullscreen");
+      f.removeAttribute("mozallowfullscreen");
+    });
+  }
+  stage.querySelectorAll("iframe").forEach(f => f.setAttribute("allow", "autoplay; encrypted-media; picture-in-picture"));
+
+  const inFs = () => document.fullscreenElement === stage || stage.classList.contains("pseudo-fs");
+  function syncLabel() { fsBtn.textContent = inFs() ? "Exit fullscreen" : "Fullscreen"; }
+  function toggleFs() {
+    if (inFs()) {
+      if (document.fullscreenElement) document.exitFullscreen();
+      stage.classList.remove("pseudo-fs");
+    } else if (stage.requestFullscreen) {
+      stage.requestFullscreen().catch(() => stage.classList.add("pseudo-fs"));
+    } else {
+      stage.classList.add("pseudo-fs");   // iPhone Safari fallback
+    }
+    setTimeout(syncLabel, 50);
+  }
+  fsBtn.addEventListener("click", toggleFs);
+  stage.addEventListener("dblclick", toggleFs);
+  document.addEventListener("fullscreenchange", syncLabel);
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && stage.classList.contains("pseudo-fs")) { stage.classList.remove("pseudo-fs"); syncLabel(); }
+  });
+</script>
+</body>
+</html>
