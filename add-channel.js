@@ -300,6 +300,16 @@
     document.head.appendChild(style);
   }
 
+  // On GitHub Pages the site is served from https://<owner>.github.io/<repo>/…
+  // — we can read owner/repo straight from that URL, no channels.json needed.
+  function guessFromPagesHost() {
+    var m = /^([a-z0-9][a-z0-9-]*)\.github\.io$/i.exec(location.hostname);
+    if (!m) return {};
+    var p = location.pathname.split("/").filter(Boolean);
+    if (p.length === 0) return {};
+    return { owner: m[1], repo: decodeURIComponent(p[0]) };
+  }
+
   async function loadConfig() {
     try {
       var r = await fetch(CONFIG_URL + "?cb=" + Date.now(), { cache: "no-store" });
@@ -309,8 +319,9 @@
     // Merge in values inferred from the current page URL (works when browsing
     // the file on github.com itself), so channels.json can stay minimal.
     var guess = guessFromLocation();
-    cfg.owner  = cfg.owner  || guess.owner;
-    cfg.repo   = cfg.repo   || guess.repo;
+    var pages = guessFromPagesHost();
+    cfg.owner  = cfg.owner  || guess.owner  || pages.owner;
+    cfg.repo   = cfg.repo   || guess.repo   || pages.repo;
     cfg.branch = cfg.branch || guess.branch || "main";
     // The committed token field is only a legacy fallback; prefer the local one.
     if (getToken()) cfg.token = getToken();
