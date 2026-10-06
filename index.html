@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sports Channels — Live TV</title>
+<meta name="description" content="Directory of live sports channels. Click a channel to open its player.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #09080a;
+    --panel: #121013;
+    --gold: #d4af37;
+    --line: #2b262d;
+    --text: #ece6d6;
+    --muted: #8a838f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: Barlow, system-ui, sans-serif; }
+  body { min-height: 100dvh; padding: 24px 16px 48px; }
+
+  header { max-width: 1100px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+  h1 { font-size: 22px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin: 0; color: var(--gold); }
+  .count { color: var(--muted); font-size: 14px; }
+
+  .search { max-width: 1100px; margin: 0 auto 24px; }
+  .search input {
+    width: 100%; padding: 10px 14px; font: 500 15px Barlow, sans-serif;
+    color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  }
+  .search input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  nav.grid {
+    max-width: 1100px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;
+  }
+  nav.grid a {
+    display: block; padding: 14px 16px; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 6px;
+    color: var(--text); text-decoration: none; font-weight: 500; letter-spacing: .02em;
+    transition: border-color .15s ease, color .15s ease, transform .1s ease;
+  }
+  nav.grid a:hover, nav.grid a:focus-visible { border-color: var(--gold); color: var(--gold); }
+  nav.grid a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  nav.grid a.hidden { display: none; }
+
+  .empty { max-width: 1100px; margin: 32px auto 0; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Sports Channels</h1>
+  <span class="count" id="count"></span>
+</header>
+
+<div class="search">
+  <label for="q" class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Search channels</label>
+  <input id="q" type="search" placeholder="Search channels…" autocomplete="off">
+</div>
+
+<nav class="grid" id="channels" aria-label="Channel list">
+  <a href="ZDFDE.html">ZDF (Germany)</a>
+  <a href="beinsportsmena1.html">beIN Sports MENA 1</a>
+  <a href="beinsportsmena2(eng).html">beIN Sports MENA 2 (English)</a>
+  <a href="beinsportsmena3.html">beIN Sports MENA 3</a>
+  <a href="foxsoccerplus.html">Fox Soccer Plus</a>
+  <a href="foxsports1usa.html">Fox Sports 1 (USA)</a>
+  <a href="foxsports2usa.html">Fox Sports 2 (USA)</a>
+  <a href="itv1uk.html">ITV 1 (UK)</a>
+  <a href="itv2uk.html">ITV 2 (UK)</a>
+  <a href="itv3uk.html">ITV 3 (UK)</a>
+  <a href="novasportsstart.html">Nova Sports Start</a>
+  <a href="premiersportsireland2.html">Premier Sports Ireland 2</a>
+  <a href="skysportcalcioitaly.html">Sky Sport Calcio (Italy)</a>
+  <a href="sonyten1.html">Sony TEN 1</a>
+  <a href="sonyten2.html">Sony TEN 2</a>
+  <a href="sonyten3.html">Sony TEN 3</a>
+  <a href="sport5israel.html">Sport 5 (Israel)</a>
+  <a href="sporttv1.html">Sport TV 1</a>
+  <a href="sporttv2.html">Sport TV 2</a>
+  <a href="sporttv3.html">Sport TV 3</a>
+  <a href="sporttv4.html">Sport TV 4</a>
+  <a href="sporttv5.html">Sport TV 5</a>
+  <a href="sporttv6.html">Sport TV 6</a>
+  <a href="sportvbrasil.html">SporTV (Brazil)</a>
+  <a href="supersportlaliga.html">SuperSport LaLiga</a>
+  <a href="tf1france.html">TF1 (France)</a>
+  <a href="tycsportsargentina.html">TyC Sports (Argentina)</a>
+  <a href="viaplaysports2uk.html">Viaplay Sports 2 (UK)</a>
+  <a href="ziggosportnl.html">Ziggo Sport (NL)</a>
+</nav>
+
+<p class="empty" id="empty" hidden>No channels match your search.</p>
+
+<script>
+  const links = Array.from(document.querySelectorAll("#channels a"));
+  const countEl = document.getElementById("count");
+  const emptyEl = document.getElementById("empty");
+  const queryEl = document.getElementById("q");
+
+  function applyFilter() {
+    const q = queryEl.value.trim().toLowerCase();
+    let visible = 0;
+    for (const a of links) {
+      const hay = (a.textContent + " " + a.getAttribute("href")).toLowerCase();
+      const match = !q || hay.includes(q);
+      a.classList.toggle("hidden", !match);
+      if (match) visible++;
+    }
+    countEl.textContent = q ? visible + " of " + links.length + " channels" : links.length + " channels";
+    emptyEl.hidden = visible !== 0;
+  }
+
+  queryEl.addEventListener("input", applyFilter);
+  applyFilter();
+</script>
+
+</body>
+</html>
