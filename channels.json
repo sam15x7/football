@@ -140,6 +140,10 @@
     {
       "file": "movistarligadecampeones.html",
       "name": "Movistar Liga De Campeones"
+    },
+    {
+      "file": "daznlaliga.html",
+      "name": "Dazn LaLiga"
     }
   ]
 }
