@@ -70,7 +70,12 @@
 </header>
 
 <!-- "+ Add channel" form is injected here by add-channel.js (creates the .html file in GitHub directly) -->
-<script src="add-channel.js" defer></script>
+<script>
+  // Load add-channel.js with a cache-buster so browsers never run a stale copy
+  var s = document.createElement("script");
+  s.src = "add-channel.js?v=" + Date.now();
+  document.head.appendChild(s);
+</script>
 
 <div class="search">
   <label for="q" class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Search channels</label>
