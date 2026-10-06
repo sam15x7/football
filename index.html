@@ -66,7 +66,6 @@
   <h1>Sports Channels</h1>
   <div class="head-tools">
     <span class="count" id="count"></span>
-    <a class="btn-new" href="new.html" title="Opens a blank page built from template.html">+ New channel</a>
   </div>
 </header>
 
@@ -134,19 +133,8 @@
   queryEl.addEventListener("input", applyFilter);
   applyFilter();
 
-  // Keep a "+ New channel" card at the end of the grid so the template is one click away.
-  (function addNewCard() {
-    const grid = document.getElementById("channels");
-    if (!grid || grid.querySelector(".is-new")) return;
-    const card = document.createElement("a");
-    card.href = "new.html";
-    card.className = "is-new";
-    card.textContent = "+ New channel";
-    card.title = "Opens a blank page built from template.html";
-    grid.appendChild(card);
-    links.push(card);          // make it searchable too
-    applyFilter();
-  })();
+  // No manual "New channel" card anymore — use the "+ Add channel" button above,
+  // which creates and commits the file for you automatically.
 </script>
 
 </body>

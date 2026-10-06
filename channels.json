@@ -2,7 +2,7 @@
   "owner": "",
   "repo": "",
   "branch": "main",
-  "token": "",
+  "token": "PASTE_YOUR_GITHUB_TOKEN_HERE",
   "channels": [
     { "file": "ZDFDE.html", "name": "ZDF (Germany)" },
     { "file": "beinsportsmena1.html", "name": "beIN Sports MENA 1" },
