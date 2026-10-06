@@ -2,7 +2,8 @@
   "owner": "",
   "repo": "",
   "branch": "main",
-  "token": "PASTE_YOUR_GITHUB_TOKEN_HERE",
+  "token": "",
+  "_note": "SECURITY: never put a real token in this file — it is public. The + Add channel form stores the token only in your browser (localStorage). Fill owner/repo/branch, leave token empty.",
   "channels": [
     { "file": "ZDFDE.html", "name": "ZDF (Germany)" },
     { "file": "beinsportsmena1.html", "name": "beIN Sports MENA 1" },

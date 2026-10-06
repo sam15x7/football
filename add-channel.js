@@ -6,16 +6,19 @@
  *   3. Updates channels.json + index.html in the same repo so the new link appears.
  *   4. Once GitHub Pages rebuilds (~30–60 s), the card is live on your site.
  *
- * One-time setup (edit channels.json in this repo):
- *   "owner": "your-github-username",
- *   "repo":  "your-repo-name",
- *   "branch": "main",
- *   "token": "github personal access token (classic) with 'repo' scope"
- *   Create the token at: https://github.com/settings/tokens
+ * One-time setup — NO secrets are ever committed to this repo:
+ *   1. In channels.json set "owner", "repo" and "branch" only (leave "token" empty).
+ *   2. Create a fine-grained Personal Access Token at
+ *      https://github.com/settings/personal-access-tokens/new
+ *        - Repository access: "Only select repositories" → THIS repo only
+ *        - Permissions: Contents = Read and write
+ *   3. On your live site click "+ Add channel" → "🔑 Set token". The token is saved
+ *      ONLY in this browser (localStorage); GitHub's secret scanner never sees it.
+ *      You must repeat step 3 once per device/browser you add channels from.
  *
- * SECURITY NOTE: the token lives in channels.json inside this repo, so ANYONE who can
- * see the repo can commit to it. Use a dedicated bot account / fine-grained token that
- * can only touch this repo. Keep the repo's Pages publish source trusted.
+ * If the repo is PRIVATE, owner/repo/branch can also be detected automatically from
+ * the GitHub web URL (…/<owner>/<repo>/blob/<branch>/index.html), so channels.json
+ * needs no values at all.
  */
 (function () {
   "use strict";
@@ -23,9 +26,24 @@
   var CONFIG_URL = "channels.json";
   var TEMPLATE_URL = "template.html";
   var INDEX_URL = "index.html";
+  var TOKEN_KEY = "ghAddChannelToken"; // token lives only in this browser
 
-  var btn, form, titleEl, urlEl, fileEl, statusEl;
+  var btn, form, titleEl, urlEl, fileEl, statusEl, tokenBtn;
   var cfg = null, tpl = null;
+
+  function getToken() {
+    try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; }
+  }
+  function setToken(t) {
+    try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+  }
+
+  // When served from github.com itself, infer owner/repo/branch from the URL.
+  function guessFromLocation() {
+    var m = /^\/([^\/?#]+)\/([^\/?#]+)\/blob\/([^\/?#]+)/.exec(location.pathname);
+    if (!m) return {};
+    return { owner: m[1], repo: m[2], branch: decodeURIComponent(m[3]) };
+  }
 
   /* ---------- helpers ---------- */
 
@@ -50,7 +68,7 @@
 
   function ghHeaders(etag) {
     var h = {
-      "Authorization": "token " + cfg.token,
+      "Authorization": "token " + (getToken() || (cfg && cfg.token) || ""),
       "Accept": "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28"
     };
@@ -137,8 +155,11 @@
     if (!/^[a-z0-9._-]+\.html$/.test(file)) return show("File name may use letters, numbers, dots, dashes and must end in .html", "err");
     if (/^(index|new|template)\.html$/.test(file)) return show("That file name is reserved.", "err");
 
-    if (!cfg || !cfg.owner || !cfg.repo || !cfg.token) {
-      return show('Not configured yet. Edit channels.json in this repo: set "owner", "repo" and a "token".', "err");
+    if (!cfg || !cfg.owner || !cfg.repo) {
+      return show('Not configured yet. Edit channels.json in this repo: set "owner" and "repo".', "err");
+    }
+    if (!getToken()) {
+      return show("No token saved in this browser yet. Click “🔑 Set token” above the form and paste a fine-grained PAT (Contents: Read & write, this repo only). It is stored locally — never committed.", "err");
     }
 
     btn.disabled = true;
@@ -205,6 +226,10 @@
     wrap.className = "add-wrap";
     wrap.hidden = true;
     wrap.innerHTML =
+      '<div class="token-bar">' +
+      '  <button type="button" id="btnToken" class="btn-new btn-token">🔑 Set token</button>' +
+      '  <span id="tokenState" class="token-state"></span>' +
+      "</div>" +
       '<form id="addForm" class="add-form" novalidate>' +
       '  <label>Title<input id="fTitle" type="text" placeholder="e.g. ESPN 4 (Argentina)" required></label>' +
       '  <label>Stream URL<input id="fUrl" type="url" placeholder="https://…/stream.php" required></label>' +
@@ -220,6 +245,30 @@
     urlEl = $("fUrl");
     fileEl = $("fFile");
     statusEl = $("fStatus");
+    tokenBtn = $("btnToken");
+
+    function refreshTokenState() {
+      var has = !!getToken();
+      $("tokenState").textContent = has
+        ? "Token saved in this browser ✔ (never committed)"
+        : "No token yet — click the button and paste a fine-grained PAT";
+      $("tokenState").className = "token-state " + (has ? "ok" : "warn");
+      tokenBtn.textContent = has ? "🔑 Change / clear token" : "🔑 Set token";
+    }
+    tokenBtn.addEventListener("click", function () {
+      var cur = getToken();
+      var v = prompt(
+        "Paste your GitHub fine-grained Personal Access Token.\n" +
+        "(Contents: Read & write, limited to THIS repo)\n\n" +
+        "It is stored ONLY in this browser's localStorage — never in the repo.\n" +
+        "Leave empty and press OK to clear it.",
+        cur ? "" : "");
+      if (v === null) return;
+      setToken(v.trim());
+      refreshTokenState();
+      if (v.trim()) show("Token saved locally. You can now add channels from this browser.", "ok");
+    });
+    refreshTokenState();
 
     btn.addEventListener("click", function () {
       wrap.hidden = !wrap.hidden;
@@ -235,6 +284,10 @@
     var style = document.createElement("style");
     style.textContent =
       ".btn-add { cursor:pointer; font:inherit; background:transparent; }\n" +
+      ".token-bar { display:flex; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap; }\n" +
+      ".btn-token { border-color:#d4af37; color:#d4af37; font-size:13px; padding:6px 12px; }\n" +
+      ".token-state { font-size:13px; color:#8a838f; }\n" +
+      ".token-state.ok { color:#a5d6a7; } .token-state.warn { color:#e6c07b; }\n" +
       ".add-wrap { max-width:1100px; margin:0 auto 20px; }\n" +
       ".add-form { display:grid; gap:12px; background:#121013; border:1px solid #2b262d; border-radius:8px; padding:16px; }\n" +
       ".add-form label { display:grid; gap:6px; font-size:13px; color:#8a838f; letter-spacing:.03em; }\n" +
@@ -251,7 +304,16 @@
     try {
       var r = await fetch(CONFIG_URL + "?cb=" + Date.now(), { cache: "no-store" });
       if (r.ok) cfg = await r.json();
-    } catch (e) { /* stays null → submit shows setup hint */ }
+    } catch (e) { /* stays null → handled below */ }
+    if (!cfg || typeof cfg !== "object") cfg = {};
+    // Merge in values inferred from the current page URL (works when browsing
+    // the file on github.com itself), so channels.json can stay minimal.
+    var guess = guessFromLocation();
+    cfg.owner  = cfg.owner  || guess.owner;
+    cfg.repo   = cfg.repo   || guess.repo;
+    cfg.branch = cfg.branch || guess.branch || "main";
+    // The committed token field is only a legacy fallback; prefer the local one.
+    if (getToken()) cfg.token = getToken();
   }
 
   if (document.readyState === "loading") {
