@@ -18,9 +18,10 @@
  *   --title <page title>   browser-tab title                 (default: Live, like every other page)
  *   --name <display name>  label used on index.html          (default: prettified file name)
  *   --wm <url|none>        watermark image URL, or "none"    (default: keep the template's watermark)
- *   --pos <position>       top right | top left | bottom right | bottom left   (default: top right)
  *   --size <percent>       watermark width, e.g. 18%         (default: keep template value)
  *   --op <opacity>         watermark opacity, e.g. .7        (default: keep template value)
+ *   --channel-url <link>   WhatsApp channel link in the scrolling marquee under the player
+ *   --channel-text <text>  marquee text shown next to that link
  *   --force                overwrite an existing page
  *   --no-index             do not add this channel to index.html
  *   --rename <new-name>    rename an existing page (no --url needed)
@@ -40,7 +41,6 @@ const INDEX_FILE = path.join(ROOT, 'index.html');
 const RESERVED = ['index.html', 'template.html'];
 const NEW_FILE = 'new.html';   // the blank template page every host can serve
 const DEFAULT_STREAM_URL = 'https://dlive.sx/stream/stream-885.php';
-const POSITIONS = ['top right', 'top left', 'bottom right', 'bottom left'];
 
 /* ---------------------------- tiny argument parser --------------------------- */
 
@@ -123,16 +123,6 @@ function loadTemplate() {
 function applyOptions(html, opts) {
   const changes = [];
 
-  if (opts.pos !== undefined && opts.pos !== true) {
-    const pos = String(opts.pos).trim().toLowerCase().replace(/[\s-]+/g, ' ');
-    if (!POSITIONS.includes(pos)) fail('--pos must be one of: ' + POSITIONS.join(' | '));
-    const [side, corner] = pos.split(' ');
-    const next = html.replace(/(\n\s*\.wm \{)[^}]*?;\s*\}/, `\n  .wm { ${side}: 0; ${corner}: 0; }`);
-    if (next === html) fail('Could not locate the ".wm { ... }" position rule in template.html.');
-    html = next;
-    changes.push('watermark position → ' + pos);
-  }
-
   if (opts.size !== undefined && opts.size !== true) {
     const size = String(opts.size).trim().replace('%', '') + '%';
     if (!/^(\d{1,2}(\.\d+)?|100)%$/.test(size)) fail('--size must be a percentage, e.g. 18%');
@@ -157,6 +147,24 @@ function applyOptions(html, opts) {
       html = html.replace(/(<img class="wm" src=")[^"]*(")/, `$1${url}$2`);
       changes.push('watermark image → ' + url);
     }
+  }
+
+  // WhatsApp channel marquee (the scrolling bar under the player in the new template).
+  if (opts['channel-url'] !== undefined && opts['channel-url'] !== true) {
+    const link = String(opts['channel-url']).replace(/"/g, '&quot;');
+    if (!/^(https?:)?\/\//.test(link)) fail('--channel-url must be a full https:// link.');
+    const next = html.replace(/(const CHANNEL_URL\s*=\s*)"[^"]*"/, `$1"${link}"`);
+    if (next === html) fail('Could not locate the "CHANNEL_URL" constant in template.html.');
+    html = next;
+    changes.push('marquee channel link → ' + link);
+  }
+
+  if (opts['channel-text'] !== undefined && opts['channel-text'] !== true) {
+    const text = String(opts['channel-text']).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const next = html.replace(/(const CHANNEL_TEXT\s*=\s*)"[^"]*"/, `$1"${text}"`);
+    if (next === html) fail('Could not locate the "CHANNEL_TEXT" constant in template.html.');
+    html = next;
+    changes.push('marquee text updated');
   }
 
   return { html, changes };
