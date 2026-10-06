@@ -123,6 +123,7 @@
   function buildPage(title, streamUrl) {
     // Fill the {{TITLE}} / {{STREAM_URL}} tokens of template.html.
     // Escape into the HTML attribute/text contexts they appear in.
+    if (/[{}]/.test(streamUrl)) throw new Error("Stream URL may not contain { or } characters.");
     return tpl
       .replace(/\{\{TITLE\}\}/g, esc(title))
       .replace(/\{\{STREAM_URL\}\}/g, streamUrl.replace(/"/g, "%22"));
@@ -153,6 +154,7 @@
     if (!/^https?:\/\//i.test(stream)) return show("Stream URL must start with http:// or https://", "err");
     if (!file) file = slugify(title) + ".html";
     if (!/^[a-z0-9._-]+\.html$/.test(file)) return show("File name may use letters, numbers, dots, dashes and must end in .html", "err");
+    if (/(^|\/)\.\.(\/|$)/.test(file)) return show("File name may not contain '..'.", "err");
     if (/^(index|new|template)\.html$/.test(file)) return show("That file name is reserved.", "err");
 
     if (!cfg || !cfg.owner || !cfg.repo) {
