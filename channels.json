@@ -148,6 +148,10 @@
     {
       "file": "espnusa.html",
       "name": "ESPN USA"
+    },
+    {
+      "file": "espn2usa.html",
+      "name": "ESPN 2 USA"
     }
   ]
 }
