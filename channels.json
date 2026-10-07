@@ -152,6 +152,10 @@
     {
       "file": "espn2usa.html",
       "name": "ESPN 2 USA"
+    },
+    {
+      "file": "espnu.html",
+      "name": "ESPN U"
     }
   ]
 }
