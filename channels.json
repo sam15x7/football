@@ -144,6 +144,10 @@
     {
       "file": "daznlaliga.html",
       "name": "Dazn LaLiga"
+    },
+    {
+      "file": "espnusa.html",
+      "name": "ESPN USA"
     }
   ]
 }
