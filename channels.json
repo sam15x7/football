@@ -144,6 +144,22 @@
     {
       "file": "daznlaliga.html",
       "name": "Dazn LaLiga"
+    },
+    {
+      "file": "espnusa.html",
+      "name": "ESPN USA"
+    },
+    {
+      "file": "espn2usa.html",
+      "name": "ESPN 2 USA"
+    },
+    {
+      "file": "espnu.html",
+      "name": "ESPN U"
+    },
+    {
+      "file": "starsports1in.html",
+      "name": "Star Sports 1 IN"
     }
   ]
 }
