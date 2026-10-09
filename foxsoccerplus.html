@@ -3,10 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#09080a">
 <title>Live</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&display=swap" rel="stylesheet">
+
+<!-- Warm up the connections the page needs; the logo host is only discovered late, so this helps -->
+<link rel="preconnect" href="https://i.ibb.co" crossorigin>
+<link rel="dns-prefetch" href="https://dlive.sx">
+
+<!-- Font loads without blocking the first paint (the page shows instantly in a system font, then swaps) -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&display=swap"></noscript>
+
 <style>
   /* ---------- Watermark settings (centered) ---------- */
   :root {
@@ -20,7 +28,7 @@
   /* --------------------------------------------------- */
 
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); font-family: Barlow, system-ui, sans-serif; }
+  html, body { margin: 0; background: var(--bg); font-family: Barlow, system-ui, -apple-system, "Segoe UI", sans-serif; }
   body { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; gap: 10px; }
 
   /* Player = video + marquee. This is what goes fullscreen, so both stay visible. */
@@ -28,7 +36,7 @@
   .player:fullscreen, .player.pseudo-fs { width: 100vw; height: 100dvh; border: 0; }
   .player.pseudo-fs { position: fixed; inset: 0; z-index: 999; }
 
-  .stage { position: relative; overflow: hidden; background: #000; width: 100%; aspect-ratio: 16 / 9; }
+  .stage { position: relative; overflow: hidden; background: #000; width: 100%; aspect-ratio: 16 / 9; contain: layout paint; }
   .player:fullscreen .stage, .player.pseudo-fs .stage { aspect-ratio: auto; flex: 1 1 auto; min-height: 0; }
 
   /* Whatever iframe you paste fills the stage */
@@ -41,16 +49,16 @@
   }
 
   /* WhatsApp channel marquee */
-  .marquee { flex: none; overflow: hidden; background: #0d0c0f; border-top: 1px solid var(--line); height: 38px; display: flex; align-items: center; }
+  .marquee { flex: none; overflow: hidden; background: #0d0c0f; border-top: 1px solid var(--line); height: 38px; display: flex; align-items: center; contain: layout paint; }
   .track { display: inline-flex; white-space: nowrap; animation: scroll 32s linear infinite; will-change: transform; }
   .marquee:hover .track { animation-play-state: paused; }
-  .track a { color: var(--gold); text-decoration: none; font: 600 14px Barlow, sans-serif; letter-spacing: .02em; padding: 0 28px; }
+  .track a { color: var(--gold); text-decoration: none; font: 600 14px Barlow, system-ui, sans-serif; letter-spacing: .02em; padding: 0 28px; }
   .track a:hover { text-decoration: underline; }
   .track a::after { content: "\25C6"; margin-left: 56px; color: var(--line); }
-  @keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @keyframes scroll { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
   @media (prefers-reduced-motion: reduce) { .track { animation: none; } }
 
-  button { font: 500 14px Barlow, sans-serif; color: #ece6d6; background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 8px 16px; cursor: pointer; }
+  button { font: 500 14px Barlow, system-ui, sans-serif; color: #ece6d6; background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 8px 16px; cursor: pointer; }
   button:hover { border-color: var(--gold); color: var(--gold); }
   button:focus-visible, .track a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 </style>
@@ -64,7 +72,27 @@
 <iframe src="https://dlive.sx/stream/stream-756.php" width="100%" height="100%" style="border:0;" allowfullscreen></iframe>
     <!-- ============ PASTE YOUR IFRAME ABOVE THIS LINE ============ -->
 
-    <img class="wm" src="https://i.ibb.co/fYfDkpyz/file-00000000b894820a90c1d95f7fe249f4.png" alt="" draggable="false" onerror="this.remove()">
+    <!-- Runs right after the iframe so the settings apply before the stream loads (no reload needed) -->
+    <script>
+      /* true  = the player's own fullscreen button is disabled, so viewers use the Fullscreen button below
+                 and your logo + marquee always stay visible.
+         false = leave the player's own fullscreen alone (logo and marquee disappear when it is used). */
+      var LOCK_FULLSCREEN = true;
+
+      (function (stage) {
+        stage.querySelectorAll("iframe").forEach(function (f) {
+          if (LOCK_FULLSCREEN) {
+            f.removeAttribute("allowfullscreen");
+            f.removeAttribute("webkitallowfullscreen");
+            f.removeAttribute("mozallowfullscreen");
+          }
+          f.setAttribute("allow", "autoplay; encrypted-media; picture-in-picture");
+          f.setAttribute("referrerpolicy", "no-referrer-when-downgrade");
+        });
+      })(document.currentScript.parentNode);
+    </script>
+
+    <img class="wm" src="https://i.ibb.co/fYfDkpyz/file-00000000b894820a90c1d95f7fe249f4.png" alt="" draggable="false" decoding="async" fetchpriority="low" onerror="this.remove()">
   </div>
 
   <div class="marquee" aria-label="WhatsApp channel"><div class="track" id="track"></div></div>
@@ -76,40 +104,31 @@
   /* ---------- Edit these ---------- */
   const CHANNEL_URL  = "https://whatsapp.com/channel/0029VaEQJcJEVccLFGqfTo0w";
   const CHANNEL_TEXT = "Join our WhatsApp channel for live updates";
-
-  /* true  = the player's own fullscreen button is disabled, so viewers use the Fullscreen button below
-             and your logo + marquee always stay visible.
-     false = leave the player's own fullscreen alone (logo and marquee disappear when it is used). */
-  const LOCK_FULLSCREEN = true;
   /* -------------------------------- */
 
   const player = document.getElementById("player");
   const stage  = document.getElementById("stage");
   const fsBtn  = document.getElementById("fsBtn");
 
-  /* Build the marquee: two identical halves so the loop is seamless */
-  const track = document.getElementById("track");
-  for (let half = 0; half < 2; half++) {
+  /* Marquee: build one half, clone it for a seamless loop (single DOM write) */
+  (function () {
+    const half = document.createDocumentFragment();
     for (let i = 0; i < 6; i++) {
       const a = document.createElement("a");
       a.href = CHANNEL_URL; a.target = "_blank"; a.rel = "noopener noreferrer";
       a.textContent = CHANNEL_TEXT;
-      if (half) a.setAttribute("aria-hidden", "true"), a.tabIndex = -1;
-      track.appendChild(a);
+      half.appendChild(a);
     }
-  }
+    const copy = half.cloneNode(true);
+    copy.childNodes.forEach(a => { a.setAttribute("aria-hidden", "true"); a.tabIndex = -1; });
+    const track = document.getElementById("track");
+    track.appendChild(half);
+    track.appendChild(copy);
+  })();
 
-  if (LOCK_FULLSCREEN) {
-    stage.querySelectorAll("iframe").forEach(f => {
-      f.removeAttribute("allowfullscreen");
-      f.removeAttribute("webkitallowfullscreen");
-      f.removeAttribute("mozallowfullscreen");
-    });
-  }
-  stage.querySelectorAll("iframe").forEach(f => f.setAttribute("allow", "autoplay; encrypted-media; picture-in-picture"));
-
+  /* Fullscreen on the player (video + logo + marquee together) */
   const inFs = () => document.fullscreenElement === player || player.classList.contains("pseudo-fs");
-  function syncLabel() { fsBtn.textContent = inFs() ? "Exit fullscreen" : "Fullscreen"; }
+  const syncLabel = () => { fsBtn.textContent = inFs() ? "Exit fullscreen" : "Fullscreen"; };
   function toggleFs() {
     if (inFs()) {
       if (document.fullscreenElement) document.exitFullscreen();
@@ -119,7 +138,7 @@
     } else {
       player.classList.add("pseudo-fs");   // iPhone Safari fallback
     }
-    setTimeout(syncLabel, 50);
+    syncLabel();
   }
   fsBtn.addEventListener("click", toggleFs);
   stage.addEventListener("dblclick", toggleFs);
