@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sports Channels — Live TV</title>
+<!-- Channel links above </nav> are GENERATED from channels.json by the backend admin scripts (admin/add-channel.js, admin/sync-index.js). Do not edit the list by hand. -->
 <meta name="description" content="Directory of live sports channels. Click a channel to open its player.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,15 +50,6 @@
   .empty { max-width: 1100px; margin: 32px auto 0; text-align: center; color: var(--muted); }
 
   .head-tools { display: flex; align-items: center; gap: 14px; }
-  .btn-new {
-    padding: 7px 14px; border: 1px solid var(--line); border-radius: 6px;
-    color: var(--text); text-decoration: none; font-size: 14px; letter-spacing: .02em;
-    transition: border-color .15s ease, color .15s ease;
-  }
-  .btn-new:hover, .btn-new:focus-visible { border-color: var(--gold); color: var(--gold); }
-  .btn-new:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-  nav.grid a.is-new { border-style: dashed; color: var(--muted); }
-  nav.grid a.is-new:hover, nav.grid a.is-new:focus-visible { color: var(--gold); }
 </style>
 </head>
 <body>
@@ -69,13 +61,8 @@
   </div>
 </header>
 
-<!-- "+ Add channel" form is injected here by add-channel.js (creates the .html file in GitHub directly) -->
-<script>
-  // Load add-channel.js with a cache-buster so browsers never run a stale copy
-  var s = document.createElement("script");
-  s.src = "add-channel.js?v=" + Date.now();
-  document.head.appendChild(s);
-</script>
+<!-- Channels are added from the backend only (see admin/README.md).
+     This page is public: it just renders the list — no forms, no tokens. -->
 
 <div class="search">
   <label for="q" class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Search channels</label>
@@ -88,12 +75,18 @@
   <a href="beinsportsmena2(eng).html">beIN Sports MENA 2 (English)</a>
   <a href="beinsportsmena3.html">beIN Sports MENA 3</a>
   <a href="daznlaliga.html">Dazn LaLiga</a>
+  <a href="espn2usa.html">ESPN 2 USA</a>
+  <a href="espnu.html">ESPN U</a>
+  <a href="espnusa.html">ESPN USA</a>
+  <a href="foxdeportes.html">Fox Deportes</a>
   <a href="foxsoccerplus.html">Fox Soccer Plus</a>
   <a href="foxsports1usa.html">Fox Sports 1 (USA)</a>
   <a href="foxsports2usa.html">Fox Sports 2 (USA)</a>
   <a href="itv1uk.html">ITV 1 (UK)</a>
   <a href="itv2uk.html">ITV 2 (UK)</a>
   <a href="itv3uk.html">ITV 3 (UK)</a>
+  <a href="laligatvuk.html">LaLiga TV UK</a>
+  <a href="maxsport1bulgaria.html">Max Sport 1 Bulgaria</a>
   <a href="movistarligadecampeones.html">Movistar Liga De Campeones</a>
   <a href="novasportsstart.html">Nova Sports Start</a>
   <a href="premiersportsireland2.html">Premier Sports Ireland 2</a>
@@ -110,6 +103,7 @@
   <a href="sporttv5.html">Sport TV 5</a>
   <a href="sporttv6.html">Sport TV 6</a>
   <a href="sportvbrasil.html">SporTV (Brazil)</a>
+  <a href="starsports1in.html">Star Sports 1 IN</a>
   <a href="supersportpremierleague.html">Super Sport Premier League</a>
   <a href="supersportlaliga.html">SuperSport LaLiga</a>
   <a href="telefeargentina.html">Telefe Argentina</a>
@@ -118,19 +112,7 @@
   <a href="viaplaysports2uk.html">Viaplay Sports 2 (UK)</a>
   <a href="ZDFDE.html">ZDF (Germany)</a>
   <a href="ziggosportnl.html">Ziggo Sport (NL)</a>
-
-  <a href="abudhabisports1uae.html">Abu Dhabi Sports 1 UAE</a>
-  <a href="supersportpremierleague.html">Super Sport Premier League</a>
-  <a href="telefeargentina.html">Telefe Argentina</a>
-  <a href="skysportsf1uk.html">Sky Sports F1 UK</a>
-  <a href="movistarligadecampeones.html">Movistar Liga De Campeones</a>
-  <a href="daznlaliga.html">Dazn LaLiga</a>
-  <a href="espnusa.html">ESPN USA</a>
-  <a href="espn2usa.html">ESPN 2 USA</a>
-  <a href="espnu.html">ESPN U</a>
-  <a href="starsports1in.html">Star Sports 1 IN</a>
-  <a href="maxsport1bulgaria.html">Max Sport 1 Bulgaria</a>
-  <a href="foxdeportes.html">Fox Deportes</a></nav>
+</nav>
 
 <p class="empty" id="empty" hidden>No channels match your search.</p>
 
@@ -156,8 +138,7 @@
   queryEl.addEventListener("input", applyFilter);
   applyFilter();
 
-  // No manual "New channel" card anymore — use the "+ Add channel" button above,
-  // which creates and commits the file for you automatically.
+  // Channels are managed from the backend only — see admin/README.md.
 </script>
 
 </body>

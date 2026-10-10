@@ -1,1 +1,13 @@
-(empty)
+# ── NEVER COMMIT THESE ────────────────────────────────
+# Your GitHub fine-grained PAT (plaintext)
+.github-token
+
+# Encrypted token vault — safe to commit, but useless without the passphrase
+admin/token.enc
+
+# Local env file used by the admin scripts
+admin/.env
+
+# Node bits
+node_modules/
+package-lock.json
