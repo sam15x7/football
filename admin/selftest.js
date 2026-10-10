@@ -88,18 +88,21 @@ const res = (status, json) => ({ ok: status < 400, status, json: async () => jso
   $('chUrl').value = 'https://dlive.sx/cast/stream-900.php';
   $('addBtn').click();
   await new Promise(r => setTimeout(r, 900));
-  assert(/is live/.test($('addStatus').textContent), 'add-channel succeeded: ' + $('addStatus').textContent);
+  assert(/Added|Updated/.test($('addStatus').textContent), 'add-channel succeeded: ' + $('addStatus').textContent);
   const ch = JSON.parse(files['channels.json']);
   assert(ch.channels.length === before + 1, 'channels.json gained entry');
   assert(!('owner' in ch) && !('repo' in ch), 'owner/repo stripped from public channels.json');
   assert(files[NEWFILE] && files[NEWFILE].includes('https://dlive.sx/cast/stream-900.php'), 'new page committed with stream URL');
   assert(files['index.html'].includes('<a href="' + encodeURI(NEWFILE) + '">ESPN 4 (Argentina)</a>'), 'index.html regenerated with new card');
 
-  // 5. Remove it again.
-  const btn = [...doc.querySelectorAll('#list button')].find(b => b.dataset.file === NEWFILE);
+  // 5. Remove it again (click the .danger button — there is also an Edit button per row).
+  const btn = [...doc.querySelectorAll('#list button.danger')].find(b => b.dataset.file === NEWFILE);
   assert(!!btn, 'remove button rendered');
   btn.click();
-  await new Promise(r => setTimeout(r, 700));
+  for (let i = 0; i < 100 && !/Removed|✗/.test($('listStatus').textContent); i++) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+  if (/✗/.test($('listStatus').textContent)) { console.error('remove failed:', $('listStatus').textContent); }
   assert(JSON.parse(files['channels.json']).channels.length === before, 'channel removed from channels.json');
   assert(!files['index.html'].includes(NEWFILE), 'index.html regenerated without it');
 
