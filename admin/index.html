@@ -469,12 +469,16 @@ function refreshTokenState() {
 }
 $('saveToken').onclick = async () => {
   try { await saveTokenImpl(); }
-  catch (e) { setStatus($('connStatus'), '✗ ' + (e && e.message || e), 'err'); }
+  catch (e) { setStatus($('connStatus'), '✗ Unexpected error: ' + ((e && e.message) || e), 'err'); }
 };
 async function saveTokenImpl() {
   const t = $('token').value.trim();
   if (!t) return setStatus($('connStatus'), 'Paste the token first.', 'err');
-  if (!/^(github_pat_|gh[puroe]_)/i.test(t)) return setStatus($('connStatus'), 'Does not look like a GitHub PAT (github_pat_… or ghp_…).', 'err');
+  // Shape check only warns — GitHub itself is the real gate, and an over-strict
+  // regex here previously blocked valid tokens with a silent-looking failure.
+  if (!/^(github_pat_|gh[puroes]_)/i.test(t)) {
+    setStatus($('connStatus'), 'Note: that does not look like a standard GitHub PAT format — trying it anyway…');
+  }
   MEM_TOKEN = t;                                   // active for this tab no matter what
   refreshTokenState();                             // pill now says "stored ✓" immediately
   if (!$('owner').value.trim() || !$('repo').value.trim()) {
