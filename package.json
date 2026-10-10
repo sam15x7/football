@@ -2,7 +2,7 @@
   "name": "sports-channels-admin",
   "version": "1.0.0",
   "private": true,
-  "description": "Backend tools to add/remove sports channels and auto-regenerate index.html (public site has no add form).",
+  "description": "Channel admin lives in admin/index.html — opened straight from GitHub Pages (no Node required). CLI scripts below are optional fallbacks.",
   "scripts": {
     "admin": "node admin/serve.js",
     "token:setup": "node admin/setup-token.js",
@@ -10,5 +10,8 @@
     "channel:add": "node admin/add-channel.js",
     "channel:remove": "node admin/remove-channel.js",
     "index:sync": "node admin/sync-index.js"
+  },
+  "dependencies": {
+    "jsdom": "^29.1.1"
   }
 }

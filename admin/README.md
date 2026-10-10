@@ -32,6 +32,20 @@ admin/index.html        ← local-only, git-ignored: it is NOT in the public rep
 
 (If your browser blocks `file://` pages from calling the GitHub API — rare — use A below.)
 
+### A0-bis. PK API / Streamed embeds — REMOVED ✂
+
+All `streamed.pk` API tooling and every `embed.st` / `embedindia.st` iframe that
+came from it have been deleted from this repo:
+
+* `streamed.js` (the streamed.pk client) — deleted
+* `nascar-roval-400.html` (embed.st iframe) — deleted
+* `sonyten3.html` (embedindia.st event link) — deleted; the channel was also
+  removed from `channels.json` and `index.html`
+
+Every remaining channel page uses its own direct stream embed (e.g.
+`https://dlive.sx/cast/stream-NNN.php`). Nothing in this repo calls or references
+`streamed.pk` anymore.
+
 ### A. Local dashboard via tiny server (needs Node, no install steps)
 
 ```bash
@@ -55,6 +69,10 @@ npm run admin          # = node admin/serve.js
    `<channel>.html` (built from `template.html`, structure unchanged),
    `channels.json`, and the regenerated `index.html`.
    GitHub Pages redeploys (~30–60 s) and the new card is live.
+   *Everything the add-channel function needs — token, owner, repo, branch —
+   is stored locally in this browser only (localStorage keys
+   `channeladmin.token` / `channeladmin.cfg`). The public `channels.json` is
+   rewritten without owner/repo values; the secret never leaves your machine.*
 4. Remove channels with one click from the list; **Forget token** wipes it
    from the browser anytime.
 

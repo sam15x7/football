@@ -1,18 +1,17 @@
 #!/usr/bin/env node
 /*
- * admin/serve.js — starts the LOCAL admin dashboard (the old "click + paste URL" flow).
+ * admin/serve.js — OPTIONAL local preview of the admin dashboard.
  *
- *   npm run admin            (or: node admin/serve.js)
+ * You do NOT need this anymore: the dashboard is hosted in the repo itself and
+ * runs straight from GitHub Pages at
+ *     https://<owner>.github.io/<repo>/admin/
+ * (open that URL, paste your fine-grained PAT once, it is kept only in your
+ *  browser's localStorage).
  *
- * Opens http://127.0.0.1:8787 in your browser. From there you:
- *   · paste a fine-grained GitHub token ONCE — it is stored only in this
- *     browser's localStorage (never uploaded anywhere, never committed),
- *   · add channels by filling name + stream URL and clicking "Add channel",
- *   · remove channels with one click,
- *   · see index.html update automatically (regenerated from channels.json).
- *
- * The server binds to 127.0.0.1 only, so nobody else on your network can use it.
- * It talks directly to the GitHub API from YOUR browser; nothing is proxied.
+ * This tiny server exists only if you want to try the page offline on your own
+ * machine before pushing:   npm run admin   →  http://127.0.0.1:8787/admin/
+ * It binds to 127.0.0.1 only and simply serves the files; all GitHub calls go
+ * from your browser directly to api.github.com.
  */
 
 'use strict';
@@ -41,7 +40,6 @@ function send(res, code, body, type = 'application/json; charset=utf-8') {
   res.end(body);
 }
 
-// Serve repo files read-only (so /admin/admin.html and previews of *.html work).
 function serveStatic(req, res) {
   let rel = decodeURIComponent(req.url.split('?')[0]);
   if (rel === '/') rel = '/index.html';
@@ -52,28 +50,14 @@ function serveStatic(req, res) {
   fs.createReadStream(abs).pipe(res);
 }
 
-const server = http.createServer((req, res) => {
-  if (req.url === '/api/open-browser') {
-    try {
-      if (process.platform === 'darwin') execFileSync('open', [`http://${HOST}:${PORT}/admin/admin.html`]);
-      else if (process.platform === 'win32') execFileSync('cmd', ['/c', 'start', `http://${HOST}:${PORT}/admin/admin.html`]);
-      else execFileSync('xdg-open', [`http://${HOST}:${PORT}/admin/admin.html`], { stdio: 'ignore' });
-    } catch (_) { /* manual open is fine */ }
-    return send(res, 200, '{"ok":true}');
-  }
-  serveStatic(req, res);
-});
-
+const URL_ = `http://${HOST}:${PORT}/admin/`;
+const server = http.createServer(serveStatic);
 server.listen(PORT, HOST, () => {
-  console.log('\n  ✔ Local admin dashboard running (only you can reach it):');
-  console.log('    http://' + HOST + ':' + PORT + '/admin/admin.html\n');
-  console.log('  Token stays inside this browser (localStorage). Closing the tab does not delete it;');
-  console.log('  use the "Forget token" button in the page to wipe it.\n');
+  console.log('\n  ✔ Admin dashboard preview (local only): ' + URL_);
+  console.log('  Note: the real dashboard works without Node at your GitHub Pages URL:\n      https://<owner>.github.io/<repo>/admin/\n');
   try {
-    if (process.platform === 'darwin') execFileSync('open', [`http://${HOST}:${PORT}/admin/admin.html`]);
-    else if (process.platform === 'win32') execFileSync('cmd', ['/c', 'start', `http://${HOST}:${PORT}/admin/admin.html`]);
-    else execFileSync('xdg-open', [`http://${HOST}:${PORT}/admin/admin.html`], { stdio: 'ignore' });
-  } catch (_) {
-    console.log('  (Could not auto-open a browser — visit the URL above manually.)\n');
-  }
+    if (process.platform === 'darwin') execFileSync('open', [URL_]);
+    else if (process.platform === 'win32') execFileSync('cmd', ['/c', 'start', URL_]);
+    else execFileSync('xdg-open', [URL_], { stdio: 'ignore' });
+  } catch (_) { console.log('  (Open the URL above manually.)\n'); }
 });
