@@ -143,12 +143,19 @@ function pretty(fileName) {
 function setStatus(el, msg, cls) { el.className = 'status ' + (cls || ''); el.textContent = msg || ''; }
 
 function cfg() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_CFG) || 'null');
+    if (saved && !$('owner').value.trim() && saved.owner) $('owner').value = saved.owner;
+    if (saved && !$('repo').value.trim() && saved.repo) $('repo').value = saved.repo;
+    if (saved && !$('branch').value.trim() && saved.branch) $('branch').value = saved.branch;
+  } catch (_) {}
   return { owner: $('owner').value.trim(), repo: $('repo').value.trim(), branch: $('branch').value.trim() || 'main' };
 }
-function token() { return localStorage.getItem(LS_TOKEN) || ''; }
+function token() { return MEM_TOKEN || localStorage.getItem(LS_TOKEN) || ''; }
 
 /* ---------- GitHub API (browser -> api.github.com directly; no proxy, no server) ---------- */
 async function gh(pathname, opts = {}) {
+  if (!token()) throw new Error('No GitHub token — paste your fine-grained PAT in section 1 and press Save.');
   const c = cfg();
   let r;
   if (pathname === '/users') {
@@ -182,6 +189,8 @@ async function gh(pathname, opts = {}) {
    API (raw.githubusercontent would serve stale cache right after a commit). */
 
 /* ---------- state ---------- */
+let MEM_TOKEN = '';       // fallback when localStorage is blocked (Private Browsing)
+let MEM_CFG = null;       // {owner,repo,branch} — refreshed from the form on every click
 let TEMPLATE = null;      // template.html text (fetched from repo)
 let INDEX_HTML = null;    // index.html text
 let CHANNELS = [];        // [{file,name}]
@@ -212,7 +221,7 @@ async function loadAll() {
   if (!c.owner && data.owner) { $('owner').value = data.owner; }
   if (!c.repo && data.repo) { $('repo').value = data.repo; }
   if ((!c.branch || c.branch === 'main') && data.branch) { $('branch').value = data.branch; }
-  localStorage.setItem(LS_CFG, JSON.stringify(cfg()));
+  try { localStorage.setItem(LS_CFG, JSON.stringify(cfg())); } catch (_) {}   // blocked storage → in-memory only
   CHANNELS = data.channels || [];
   CHANNELS_RAW = { ...data };
   delete CHANNELS_RAW.owner;   // repo coordinates live ONLY in this browser's localStorage
@@ -231,8 +240,11 @@ function renderList() {
     const tr = document.createElement('tr');
     tr.innerHTML = '<td class="name">' + esc(c.name) + '</td>' +
       '<td class="file">' + esc(c.file) + '</td>' +
-      '<td style="text-align:right"><button class="danger" data-file="' + esc(c.file) + '">Remove</button></td>';
-    tr.querySelector('button').onclick = () => removeChannel(c);
+      '<td style="text-align:right;white-space:nowrap">' +
+        '<button class="ghost editBtn" data-file="' + esc(c.file) + '" style="padding:6px 12px;font-size:13px;margin-right:6px">Edit</button>' +
+        '<button class="danger" data-file="' + esc(c.file) + '">Remove</button></td>';
+    tr.querySelector('.editBtn').onclick = () => editChannel(c);
+    tr.querySelector('.danger').onclick = () => removeChannel(c);
     tb.appendChild(tr);
   }
 }
@@ -245,7 +257,7 @@ function buildIndexLinks() {
 }
 function regenerateIndex() {
   // Same rule as admin/lib.js: locate <nav class="grid" ...>, replace its body.
-  const marker = '<nav class=\"grid\"';
+  const marker = '<nav class="grid"';
   const start = INDEX_HTML.indexOf(marker);
   if (start === -1) throw new Error('index.html channel grid not found — check the <nav class=\"grid\"> block on GitHub.');
   const bodyStart = INDEX_HTML.indexOf('>', start) + 1;
@@ -255,45 +267,96 @@ function regenerateIndex() {
 
 /* ---------- commit one file (GitHub Contents API PUT — replaces the file) ---------- */
 async function commitFile(filePath, content, message) {
+  // path segments encoded individually so "index.html" stays addressable by GitHub
+  const apiPath = '/contents/' + filePath.split('/').map(encodeURIComponent).join('/');
   const body = { message, content: b64enc(content), branch: cfg().branch };
-  try {
-    const cur = await gh('/contents/' + encodeURIComponent(filePath) + '?ref=' + encodeURIComponent(cfg().branch));
-    if (cur && cur.sha) body.sha = cur.sha;   // existing file → update it
-  } catch (e) {
-    if (!/GitHub 404/.test(e.message)) throw e;  // 404 = new file, fine
-  }
-  return gh('/contents/' + encodeURIComponent(filePath), { method: 'PUT', body });
+  if (SHA[filePath]) body.sha = SHA[filePath];       // sha captured by loadAll/refreshRepoState
+  const r = await gh(apiPath, { method: 'PUT', body });
+  if (r && r.content && r.content.sha) SHA[filePath] = r.content.sha;
+  return r;
+}
 
-/* ---------- add channel ---------- */
+/* ---------- write helpers with retry & recovery ---------- */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// PUT a file; on SHA conflict (409) or rate-limit (403/429) re-read the file's
+// current sha from GitHub and retry — up to 4 attempts. Never silently fails.
+async function commitFileSafe(filePath, content, message) {
+  let lastErr;
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try { return await commitFile(filePath, content, message); }
+    catch (e) {
+      lastErr = e;
+      const m = e.message || '';
+      if (/GitHub 409/.test(m)) {                       // stale sha → refresh + retry
+        try {
+          const cur = await gh('/contents/' + filePath.split('/').map(encodeURIComponent).join('/') +
+            '?ref=' + encodeURIComponent(cfg().branch));
+          if (cur && cur.sha) SHA[filePath] = cur.sha;
+        } catch (_) {}
+        await sleep(500 * attempt);
+        continue;
+      }
+      if (/GitHub (403|429)/.test(m)) { await sleep(1500 * attempt); continue; }
+      throw e;                                          // 401/404/etc — no point retrying
+    }
+  }
+  throw lastErr;
+}
+
+// Always fetch the LATEST channels.json + index.html before writing, so we
+// never clobber files that changed since unlock (and recover cleanly if the
+// initial load was interrupted).
+async function refreshRepoState() {
+  const c = cfg();
+  const [ch, idx] = await Promise.all([
+    gh('/contents/channels.json?ref=' + encodeURIComponent(c.branch)),
+    gh('/contents/index.html?ref=' + encodeURIComponent(c.branch))
+  ]);
+  const data = JSON.parse(b64(ch.content)); SHA['channels.json'] = ch.sha;
+  INDEX_HTML = b64(idx.content);            SHA['index.html'] = idx.sha;
+  CHANNELS = data.channels || [];
+  CHANNELS_RAW = { ...data };
+  delete CHANNELS_RAW.owner; delete CHANNELS_RAW.repo;   // coords stay local-only
+}
+
+function channelsPayload() {
+  const data = { ...CHANNELS_RAW, channels: CHANNELS };  // keep _note etc.
+  if (!data._note) data._note = 'Source of truth for the channel list. index.html is GENERATED from this file by the admin dashboard (admin/index.html on GitHub Pages). Publish coordinates (owner/repo/branch) and the GitHub token are stored ONLY in the admin\'s browser localStorage — never in this public file.';
+  return JSON.stringify(data, null, 2) + '\n';
+}
+
+/* ---------- add / edit channel (same form; edits when the derived file already exists) ---------- */
 async function addChannel() {
   const name = $('chName').value.trim();
   const url = $('chUrl').value.trim();
   if (!name) return setStatus($('addStatus'), 'Enter a display name.', 'err');
   if (!/^https?:\/\/.+/i.test(url)) return setStatus($('addStatus'), 'Paste a full stream URL starting with https://', 'err');
+  if (!TEMPLATE) return setStatus($('addStatus'), 'Not unlocked yet — save your token first (section 1).', 'err');
 
   let file = slug($('chFile').value || name);
-  if (!file) return setStatus($('addStatus'), 'Could not derive a file name.', 'err');
+  if (!file) return setStatus($('addStatus'), 'Could not derive a file name from that name.', 'err');
   file += '.html';
   if (/^(index|template|new)\.html$/i.test(file)) return setStatus($('addStatus'), 'That file name is reserved.', 'err');
 
+  const editing = !!CHANNELS.find(c => c.file.toLowerCase() === file.toLowerCase());
   const title = $('chTitle').value.trim() || name;
   $('addBtn').disabled = true;
-  setStatus($('addStatus'), 'Publishing ' + file + ' …');
+  setStatus($('addStatus'), (editing ? 'Updating ' : 'Publishing ') + file + ' …');
   try {
-    const page = TEMPLATE.replace('{{TITLE}}', esc(title)).replace('{{STREAM_URL}}', url);
-    // 1) channel page
-    await commitFile(file, page, 'Add channel: ' + name);
-    // 2) channels.json
+    await refreshRepoState();                            // fresh shas + latest lists
+    const page = TEMPLATE.replace(/{{TITLE}}/g, esc(title)).replace(/{{STREAM_URL}}/g, url);
+    // 1) channel page (PUT replaces existing file — same filename = edit)
+    await commitFileSafe(file, page, (editing ? 'Update channel: ' : 'Add channel: ') + name);
+    // 2) channels.json — update entry in place or append (previous naming format kept)
     const exists = CHANNELS.find(c => c.file.toLowerCase() === file.toLowerCase());
     if (exists) exists.name = name; else CHANNELS.push({ file, name });
-    const data = { ...CHANNELS_RAW, channels: CHANNELS };   // keep _note etc.; owner/repo stay local-only
-    if (!data._note) data._note = 'Source of truth for the channel list. index.html is GENERATED from this file by the admin dashboard (admin/index.html on GitHub Pages). Publish coordinates (owner/repo/branch) and the GitHub token are stored ONLY in the admin\'s browser localStorage — never in this public file.';
-    await commitFile('channels.json', JSON.stringify(data, null, 2) + '\n', 'Register channel: ' + name);
+    await commitFileSafe('channels.json', channelsPayload(), (editing ? 'Re-register channel: ' : 'Register channel: ') + name);
     // 3) index.html
     regenerateIndex();
-    await commitFile('index.html', INDEX_HTML, 'Update index: ' + name);
+    await commitFileSafe('index.html', INDEX_HTML, (editing ? 'Update index (edit): ' : 'Update index: ') + name);
 
-    setStatus($('addStatus'), '✔ "' + name + '" is live — GitHub Pages redeploys in ~30–60 s.', 'ok');
+    setStatus($('addStatus'), (editing ? '✔ Updated "' : '✔ Added "') + name + '" — GitHub Pages redeploys in ~30–60 s.', 'ok');
     $('chName').value = ''; $('chUrl').value = ''; $('chFile').value = ''; $('chTitle').value = '';
     renderList(); $('count').textContent = CHANNELS.length + ' channels';
   } catch (e) {
@@ -303,16 +366,37 @@ async function addChannel() {
   }
 }
 
+/* ---------- edit existing channel (pre-filled form → same add flow writes new content) ---------- */
+async function editChannel(c) {
+  $('chName').value = c.name;
+  $('chFile').value = c.file.replace(/\.html$/i, '');
+  $('chTitle').value = c.name;
+  setStatus($('addStatus'), 'Loading current stream URL of "' + c.name + '" …');
+  try {
+    // read the page file on GitHub and pull its iframe src out for editing
+    const f = await gh('/contents/' + c.file.split('/').map(encodeURIComponent).join('/') +
+      '?ref=' + encodeURIComponent(cfg().branch));
+    const html = b64(f.content);
+    const m = /<iframe[^>]*\ssrc="([^"]+)"/i.exec(html) || /https?:\/\/[^"'\s<>]+\.php/i.exec(html);
+    if (m) $('chUrl').value = m[1];
+    setStatus($('addStatus'), 'Editing "' + c.name + '" — change the stream URL and press ＋ Add/publish. The same file (' + c.file + ') will be overwritten.', 'ok');
+  } catch (e) {
+    setStatus($('addStatus'), '⚠ Could not load current URL (' + e.message + '). Paste the new stream URL and press ＋ Add/publish to overwrite ' + c.file + '.', 'err');
+  }
+  $('chUrl').focus();
+  try { $('addCard').scrollIntoView({ behavior: 'smooth' }); } catch (_) {}
+}
+
 /* ---------- remove channel ---------- */
 async function removeChannel(c) {
   if (!confirm('Remove "' + c.name + '" (' + c.file + ')?\nThe page file stays on GitHub but disappears from index.html.\nDelete it manually via github.com/repo/.../delete this file if you want it gone entirely.')) return;
   setStatus($('listStatus'), 'Removing …');
   try {
+    await refreshRepoState();
     CHANNELS = CHANNELS.filter(x => x.file !== c.file);
-    const data = { ...CHANNELS_RAW, channels: CHANNELS };   // owner/repo stay local-only
-    await commitFile('channels.json', JSON.stringify(data, null, 2) + '\n', 'Remove channel: ' + c.name);
+    await commitFileSafe('channels.json', channelsPayload(), 'Remove channel: ' + c.name);
     regenerateIndex();
-    await commitFile('index.html', INDEX_HTML, 'Update index: removed ' + c.name);
+    await commitFileSafe('index.html', INDEX_HTML, 'Update index: removed ' + c.name);
     renderList(); $('count').textContent = CHANNELS.length + ' channels';
     setStatus($('listStatus'), '✔ Removed ' + c.name, 'ok');
   } catch (e) { setStatus($('listStatus'), '✗ ' + e.message, 'err'); }
@@ -338,12 +422,25 @@ $('saveToken').onclick = () => {
   const t = $('token').value.trim();
   if (!t) return setStatus($('connStatus'), 'Paste the token first.', 'err');
   if (!/^(github_pat_|gh[puroe]_)/i.test(t)) return setStatus($('connStatus'), 'Does not look like a GitHub PAT (github_pat_… or ghp_…).', 'err');
-  localStorage.setItem(LS_TOKEN, t);
-  localStorage.setItem(LS_CFG, JSON.stringify(cfg()));
+  MEM_TOKEN = t;                                   // active for this tab no matter what
+  if (!$('owner').value.trim() || !$('repo').value.trim()) {
+    return setStatus($('connStatus'), 'Fill in the GitHub owner and repository fields first — then press Save again.', 'err');
+  }
+  try {
+    localStorage.setItem(LS_TOKEN, t);
+    localStorage.setItem(LS_CFG, JSON.stringify(cfg()));
+  } catch (_) {
+    // Private Browsing / blocked storage — keep working for THIS tab via memory.
+    setStatus($('connStatus'), '⚠ Browser storage is blocked (Private Browsing?) — token kept in this tab only; you\'ll need to paste it again next time.', 'err');
+  }
   refreshTokenState();
   loadAll().catch(e => setStatus($('connStatus'), '✗ ' + e.message + ' — check owner/repo/token.', 'err'));
 };
-$('forgetToken').onclick = () => { localStorage.removeItem(LS_TOKEN); refreshTokenState(); location.reload(); };
+$('forgetToken').onclick = () => {
+  MEM_TOKEN = ''; MEM_CFG = null;
+  try { localStorage.removeItem(LS_TOKEN); localStorage.removeItem(LS_CFG); } catch (_) {}
+  refreshTokenState(); location.reload();
+};
 $('addBtn').onclick = addChannel;
 $('previewBtn').onclick = preview;
 $('refreshBtn').onclick = () => loadAll().catch(e => setStatus($('listStatus'), '✗ ' + e.message, 'err'));
@@ -382,8 +479,17 @@ document.addEventListener('keydown', e => {
     } catch (_) { /* fine — fill manually */ }
   }
 
-  if (refreshTokenState() && $('owner').value && $('repo').value) {
+  // Last resort: ask GitHub which account the stored token belongs to and use
+  // that as the owner — one less field that can silently block the Save button.
+  if (!$('owner').value && token()) {
+    try { $('owner').value = (await gh('/users')).login; } catch (_) {}
+  }
+
+  const hasToken = refreshTokenState();
+  if (hasToken && $('owner').value && $('repo').value) {
     loadAll().catch(e => setStatus($('connStatus'), '✗ ' + e.message, 'err'));
+  } else if (hasToken) {
+    setStatus($('connStatus'), 'Token found in this browser ✓ — enter the repository name, then press Save token to unlock.');
   } else {
     setStatus($('connStatus'), 'Owner & repo are pre-filled from this page URL. Paste your fine-grained token and press Save to unlock.');
   }
