@@ -4,7 +4,43 @@ The public `index.html` **no longer contains any "Add channel" form or token
 logic** — visitors can only browse and search. Channels are added/removed from
 this backend, and `index.html` updates automatically.
 
-## How it works
+## Two ways to manage channels (pick whichever you like)
+
+### A. Local dashboard — the old "click + paste URL" flow ⭐ recommended
+
+```bash
+npm run admin          # = node admin/serve.js
+# opens http://127.0.0.1:8787/admin/admin.html in your browser
+```
+
+1. First time: create a **fresh fine-grained PAT** at
+   <https://github.com/settings/personal-access-tokens/new>
+   (Repository access: *Only select repositories* → this repo;
+   Permissions: **Contents = Read and write** only).
+   Revoke the old one that lived in the public browser page:
+   <https://github.com/settings/tokens> → delete it.
+2. On the dashboard fill owner/repo, paste the token once, click
+   **Save token (local only)**. It is stored in *this browser's* localStorage
+   under origin `127.0.0.1` — never uploaded, never committed, invisible to
+   your GitHub Pages site (different origin cannot read it).
+3. Add channels forever after: type the name, **paste the stream URL**, hit
+   **＋ Add channel & publish**. The dashboard talks straight to the GitHub
+   API from your browser and commits three files in order:
+   `<channel>.html` (built from `template.html`, structure unchanged),
+   `channels.json`, and the regenerated `index.html`.
+   GitHub Pages redeploys (~30–60 s) and the new card is live.
+4. Remove channels with one click from the list; **Forget token** wipes it
+   from the browser anytime.
+
+Security notes:
+* `admin/admin.html` and `admin/serve.js` contain **zero secrets** — anyone who
+  downloads them from your repo sees an empty form that does nothing without a
+  token. The server binds to `127.0.0.1` only, so it isn't reachable from your
+  network either.
+* For maximum paranoia use option B (vault-encrypted token) instead of
+  localStorage; both coexist fine.
+
+### B. Command line — encrypted vault token
 
 ```
 channels.json  ──(source of truth: file + display name per channel)──▶  index.html
