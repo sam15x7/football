@@ -2,8 +2,7 @@
   "owner": "",
   "repo": "",
   "branch": "main",
-  "token": "",
-  "_note": "SECURITY: never put a real token in this file — it is public. The + Add channel form stores the token only in your browser (localStorage). Fill owner/repo/branch, leave token empty.",
+  "_note": "Source of truth for the channel list. index.html is GENERATED from this file by the backend admin scripts (admin/add-channel.js adds/removes entries automatically). owner/repo/branch are used by those scripts; never put a token in this public file — tokens live only in the encrypted vault admin/token.enc or GH_TOKEN env.",
   "channels": [
     {
       "file": "ZDFDE.html",
