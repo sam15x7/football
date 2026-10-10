@@ -4,14 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>LaLiga TV UK</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&display=swap" rel="stylesheet">
+
+<!-- Open the connection to the stream host right away, before the iframe needs it -->
+<link rel="preconnect" href="https://dlive.sx" crossorigin>
+<link rel="dns-prefetch" href="https://dlive.sx">
+
+<!-- Font loads without blocking the page, so it never delays the iframe -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&display=swap"></noscript>
+
 <style>
   /* ---------- Watermark settings (centered) ---------- */
   :root {
-    --wm-size: 16%;      /* width of the logo relative to the player */
-    --wm-opacity: .3;    /* 30% */
+    --wm-size: 22%;      /* width of the logo relative to the player */
+    --wm-opacity: .4;    /* 40% */
     --bg: #09080a;
     --gold: #d4af37;
     --line: #2b262d;
@@ -31,8 +37,7 @@
   .stage { position: relative; overflow: hidden; background: #000; width: 100%; aspect-ratio: 16 / 9; }
   .player:fullscreen .stage, .player.pseudo-fs .stage { aspect-ratio: auto; flex: 1 1 auto; min-height: 0; }
 
-  /* Whatever iframe you paste fills the stage */
-  .stage iframe { position: absolute; inset: 0; width: 100% !important; height: 100% !important; border: 0 !important; }
+  .stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
 
   .wm {
     position: absolute; z-index: 5; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -44,13 +49,13 @@
   .marquee { flex: none; overflow: hidden; background: #0d0c0f; border-top: 1px solid var(--line); height: 38px; display: flex; align-items: center; }
   .track { display: inline-flex; white-space: nowrap; animation: scroll 32s linear infinite; will-change: transform; }
   .marquee:hover .track { animation-play-state: paused; }
-  .track a { color: var(--gold); text-decoration: none; font: 600 14px Barlow, sans-serif; letter-spacing: .02em; padding: 0 28px; }
+  .track a { color: var(--gold); text-decoration: none; font: 600 14px Barlow, system-ui, sans-serif; letter-spacing: .02em; padding: 0 28px; }
   .track a:hover { text-decoration: underline; }
   .track a::after { content: "\25C6"; margin-left: 56px; color: var(--line); }
   @keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   @media (prefers-reduced-motion: reduce) { .track { animation: none; } }
 
-  button { font: 500 14px Barlow, sans-serif; color: #ece6d6; background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 8px 16px; cursor: pointer; }
+  button { font: 500 14px Barlow, system-ui, sans-serif; color: #ece6d6; background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 8px 16px; cursor: pointer; }
   button:hover { border-color: var(--gold); color: var(--gold); }
   button:focus-visible, .track a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 </style>
@@ -60,11 +65,16 @@
 <div class="player" id="player">
   <div class="stage" id="stage">
 
-    <!-- ============ PASTE YOUR IFRAME BELOW THIS LINE ============ -->
-<iframe src="https://dlive.sx/cast/stream-276.php" width="100%" height="100%" style="border:0;" allowfullscreen></iframe>
+    <!-- ============ PASTE YOUR IFRAME BELOW THIS LINE ============
+         - "allow" is set here in the HTML so it applies from the very first load.
+         - allowfullscreen is left out on purpose: the player's own fullscreen button is
+           disabled, so viewers use the Fullscreen button below and the logo + marquee stay visible.
+           To unlock the player's own fullscreen, add the word  allowfullscreen  to the iframe. -->
+<iframe src="https://dlive.sx/cast/stream-276.php" width="100%" height="100%" style="border:0;" allow="autoplay; encrypted-media; picture-in-picture"></iframe>
     <!-- ============ PASTE YOUR IFRAME ABOVE THIS LINE ============ -->
 
-    <img class="wm" src="https://i.ibb.co/fYfDkpyz/file-00000000b894820a90c1d95f7fe249f4.png" alt="" draggable="false" onerror="this.remove()">
+    <!-- Logo is served from this repo (same origin as the page) -->
+    <img class="wm" src="logo.webp" alt="" decoding="async" draggable="false" onerror="this.remove()">
   </div>
 
   <div class="marquee" aria-label="WhatsApp channel"><div class="track" id="track"></div></div>
@@ -76,37 +86,16 @@
   /* ---------- Edit these ---------- */
   const CHANNEL_URL  = "https://whatsapp.com/channel/0029VaEQJcJEVccLFGqfTo0w";
   const CHANNEL_TEXT = "Join our WhatsApp channel for live updates";
-
-  /* true  = the player's own fullscreen button is disabled, so viewers use the Fullscreen button below
-             and your logo + marquee always stay visible.
-     false = leave the player's own fullscreen alone (logo and marquee disappear when it is used). */
-  const LOCK_FULLSCREEN = true;
   /* -------------------------------- */
 
   const player = document.getElementById("player");
   const stage  = document.getElementById("stage");
   const fsBtn  = document.getElementById("fsBtn");
 
-  /* Build the marquee: two identical halves so the loop is seamless */
-  const track = document.getElementById("track");
-  for (let half = 0; half < 2; half++) {
-    for (let i = 0; i < 6; i++) {
-      const a = document.createElement("a");
-      a.href = CHANNEL_URL; a.target = "_blank"; a.rel = "noopener noreferrer";
-      a.textContent = CHANNEL_TEXT;
-      if (half) a.setAttribute("aria-hidden", "true"), a.tabIndex = -1;
-      track.appendChild(a);
-    }
-  }
-
-  if (LOCK_FULLSCREEN) {
-    stage.querySelectorAll("iframe").forEach(f => {
-      f.removeAttribute("allowfullscreen");
-      f.removeAttribute("webkitallowfullscreen");
-      f.removeAttribute("mozallowfullscreen");
-    });
-  }
-  stage.querySelectorAll("iframe").forEach(f => f.setAttribute("allow", "autoplay; encrypted-media; picture-in-picture"));
+  /* Marquee: two identical halves so the loop is seamless (built in one pass) */
+  const link = `<a href="${CHANNEL_URL}" target="_blank" rel="noopener noreferrer">${CHANNEL_TEXT}</a>`;
+  const hiddenLink = link.replace("<a ", '<a aria-hidden="true" tabindex="-1" ');
+  document.getElementById("track").innerHTML = link.repeat(6) + hiddenLink.repeat(6);
 
   const inFs = () => document.fullscreenElement === player || player.classList.contains("pseudo-fs");
   function syncLabel() { fsBtn.textContent = inFs() ? "Exit fullscreen" : "Fullscreen"; }

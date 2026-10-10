@@ -8,14 +8,14 @@
  *   node new-channel.js --sync
  *
  * Examples:
- *   node new-channel.js skynewsitaly --url https://dlive.sx/stream/stream-123.php --title "Sky TG24 (Italy)"
+ *   node new-channel.js skynewsitaly --url https://dlive.sx/cast/stream-123.php --title "Sky TG24 (Italy)"
  *   node new-channel.js espnz --url https://dlive.sx/cast/stream-55.php
  *   node new-channel.js oldname --rename newname        # rename a page and fix every link to it
  *   node new-channel.js --relink                        # rewrite every .html link across all pages
  *
  * Options:
  *   --url <iframe src>     stream URL for the player          (default: the template's sample URL)
- *   --title <page title>   browser-tab title                 (default: Live, like every other page)
+ *   --title <page title>   browser-tab title        (default: the channel's display name)
  *   --name <display name>  label used on index.html          (default: prettified file name)
  *   --wm <url|none>        watermark image URL, or "none"    (default: keep the template's watermark)
  *   --size <percent>       watermark width, e.g. 18%         (default: keep template value)
@@ -40,7 +40,7 @@ const TEMPLATE_FILE = path.join(ROOT, 'template.html');
 const INDEX_FILE = path.join(ROOT, 'index.html');
 const RESERVED = ['index.html', 'template.html'];
 const NEW_FILE = 'new.html';   // the blank template page every host can serve
-const DEFAULT_STREAM_URL = 'https://dlive.sx/stream/stream-885.php';
+const DEFAULT_STREAM_URL = 'https://dlive.sx/cast/stream-885.php';
 
 /* ---------------------------- tiny argument parser --------------------------- */
 
@@ -171,7 +171,9 @@ function applyOptions(html, opts) {
 }
 
 function render(tpl, opts) {
-  const title = opts.title === true || opts.title === undefined ? 'Live' : String(opts.title);
+  // Default tab title = the channel's display name (same label used on index.html).
+  const defaultTitle = opts._ && opts._[0] ? pretty(slug(opts._[0])) : 'Live';
+  const title = opts.title === true || opts.title === undefined ? defaultTitle : String(opts.title);
   const url = opts.url === true || opts.url === undefined ? DEFAULT_STREAM_URL : String(opts.url);
   if (opts.url !== undefined && opts.url !== true) {
     if (!/^(https?:)?\/\//.test(url)) fail('--url must be a full stream URL starting with https://');
@@ -381,7 +383,7 @@ function main() {
     const { html, changes } = render(tpl, opts);
     fs.writeFileSync(target, html);
     console.log('\n  ✓ Created ' + fileName + ' from template.html');
-    console.log('    title   : ' + (opts.title === true || opts.title === undefined ? 'Live' : String(opts.title)));
+    console.log('    title   : ' + (opts.title === true || opts.title === undefined ? pretty(fileName) : String(opts.title)));
     console.log('    stream  : ' + (opts.url === true || opts.url === undefined ? DEFAULT_STREAM_URL + '  (template default — edit it!)' : String(opts.url)));
     for (const c of changes) console.log('    tweak   : ' + c);
     if (opts.url === undefined) {
