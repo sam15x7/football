@@ -2,7 +2,7 @@
   "owner": "",
   "repo": "",
   "branch": "main",
-  "_note": "Source of truth for the channel list. index.html is GENERATED from this file by the backend admin scripts (admin/add-channel.js adds/removes entries automatically). owner/repo/branch are used by those scripts; never put a token in this public file — tokens live only in the encrypted vault admin/token.enc or GH_TOKEN env.",
+  "_note": "Source of truth for the channel list. index.html is GENERATED from this file (admin/add-channel.js or the admin dashboard keep both in sync). The GitHub owner/repo/branch used to publish are stored LOCALLY in your browser's localStorage by the admin dashboard (and in channels.json only as a convenience hint) \u2014 never put a token in this public file; tokens live only in the encrypted vault admin/token.enc, GH_TOKEN env, or your browser's localStorage.",
   "channels": [
     {
       "file": "ZDFDE.html",
@@ -63,10 +63,6 @@
     {
       "file": "sonyten2.html",
       "name": "Sony TEN 2"
-    },
-    {
-      "file": "sonyten3.html",
-      "name": "Sony TEN 3"
     },
     {
       "file": "sport5israel.html",

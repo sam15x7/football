@@ -151,19 +151,30 @@ const FALLBACK_TEMPLATE = null; // always fetch real template from GitHub — sa
 let TEMPLATE = null;      // template.html text (fetched from repo)
 let INDEX_HTML = null;    // index.html text
 let CHANNELS = [];        // [{file,name}]
+let CHANNELS_RAW = {};    // full channels.json object (minus owner/repo), preserved on rewrite
 let SHA = {};             // path -> sha per commit batch
 
 async function loadAll() {
   setStatus($('connStatus'), 'Loading repo files…');
+  const c = cfg();
   const [tpl, idx, ch] = await Promise.all([
-    gh('/contents/template.html?ref=' + encodeURIComponent(cfg().branch)),
-    gh('/contents/index.html?ref=' + encodeURIComponent(cfg().branch)),
-    gh('/contents/channels.json?ref=' + encodeURIComponent(cfg().branch))
+    gh('/contents/template.html?ref=' + encodeURIComponent(c.branch)),
+    gh('/contents/index.html?ref=' + encodeURIComponent(c.branch)),
+    gh('/contents/channels.json?ref=' + encodeURIComponent(c.branch))
   ]);
   TEMPLATE = b64(tpl.content); SHA['template.html'] = tpl.sha;
   INDEX_HTML = b64(idx.content); SHA['index.html'] = idx.sha;
   const data = JSON.parse(b64(ch.content)); SHA['channels.json'] = ch.sha;
+  // owner/repo/branch are stored LOCALLY in this browser (localStorage) —
+  // never written back into the public channels.json.
+  if (!c.owner && data.owner) { $('owner').value = data.owner; }
+  if (!c.repo && data.repo) { $('repo').value = data.repo; }
+  if ((!c.branch || c.branch === 'main') && data.branch) { $('branch').value = data.branch; }
+  localStorage.setItem(LS_CFG, JSON.stringify(cfg()));
   CHANNELS = data.channels || [];
+  CHANNELS_RAW = { ...data };
+  delete CHANNELS_RAW.owner;   // repo coordinates live ONLY in this browser's localStorage
+  delete CHANNELS_RAW.repo;
   $('count').textContent = CHANNELS.length + ' channels';
   renderList();
   setStatus($('connStatus'), 'Connected ✓ (' + cfg().owner + '/' + cfg().repo + '@' + cfg().branch + ')', 'ok');
@@ -235,7 +246,7 @@ async function addChannel() {
     // 2) channels.json
     const exists = CHANNELS.find(c => c.file.toLowerCase() === file.toLowerCase());
     if (exists) exists.name = name; else CHANNELS.push({ file, name });
-    const data = { owner: cfg().owner, repo: cfg().repo, branch: cfg().branch, channels: CHANNELS };
+    const data = { ...CHANNELS_RAW, channels: CHANNELS };   // keep _note etc.; owner/repo stay local-only
     await commitFile('channels.json', JSON.stringify(data, null, 2) + '\n', 'Register channel: ' + name);
     // 3) index.html
     regenerateIndex();
@@ -257,7 +268,7 @@ async function removeChannel(c) {
   setStatus($('listStatus'), 'Removing …');
   try {
     CHANNELS = CHANNELS.filter(x => x.file !== c.file);
-    const data = { owner: cfg().owner, repo: cfg().repo, branch: cfg().branch, channels: CHANNELS };
+    const data = { ...CHANNELS_RAW, channels: CHANNELS };   // owner/repo stay local-only
     await commitFile('channels.json', JSON.stringify(data, null, 2) + '\n', 'Remove channel: ' + c.name);
     regenerateIndex();
     await commitFile('index.html', INDEX_HTML, 'Update index: removed ' + c.name);
@@ -285,7 +296,7 @@ function refreshTokenState() {
 $('saveToken').onclick = () => {
   const t = $('token').value.trim();
   if (!t) return setStatus($('connStatus'), 'Paste the token first.', 'err');
-  if (!/^github_pat_|^ghp_/.test(t)) return setStatus($('connStatus'), 'Does not look like a GitHub PAT (github_pat_…).', 'err');
+  if (!/^(github_pat_|gh[puroe]_)/i.test(t)) return setStatus($('connStatus'), 'Does not look like a GitHub PAT (github_pat_… or ghp_…).', 'err');
   localStorage.setItem(LS_TOKEN, t);
   localStorage.setItem(LS_CFG, JSON.stringify(cfg()));
   refreshTokenState();
@@ -308,7 +319,9 @@ document.addEventListener('keydown', e => {
     if (saved.branch) $('branch').value = saved.branch;
   } catch (_) {}
 
-  // No repo typed yet? Try to pre-fill from the local channels.json served by admin/serve.js.
+  // No repo saved locally yet? Pre-fill owner/repo/branch from the channels.json
+  // served by admin/serve.js (public file — contains no secrets; the values are
+  // then remembered in THIS browser's localStorage, never written back anywhere).
   if (!$('owner').value || !$('repo').value) {
     try {
       const r = await fetch('/channels.json');
