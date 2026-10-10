@@ -160,6 +160,14 @@
     {
       "file": "starsports1in.html",
       "name": "Star Sports 1 IN"
+    },
+    {
+      "file": "maxsport1bulgaria.html",
+      "name": "Max Sport 1 Bulgaria"
+    },
+    {
+      "file": "foxdeportes.html",
+      "name": "Fox Deportes"
     }
   ]
 }
