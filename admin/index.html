@@ -245,7 +245,7 @@ function buildIndexLinks() {
 }
 function regenerateIndex() {
   // Same rule as admin/lib.js: locate <nav class="grid" ...>, replace its body.
-  const marker = '<nav class=\"grid\"';
+  const marker = '<nav class="grid"';
   const start = INDEX_HTML.indexOf(marker);
   if (start === -1) throw new Error('index.html channel grid not found — check the <nav class=\"grid\"> block on GitHub.');
   const bodyStart = INDEX_HTML.indexOf('>', start) + 1;
@@ -255,14 +255,17 @@ function regenerateIndex() {
 
 /* ---------- commit one file (GitHub Contents API PUT — replaces the file) ---------- */
 async function commitFile(filePath, content, message) {
+  // path segments encoded individually so "index.html" stays addressable by GitHub
+  const apiPath = '/contents/' + filePath.split('/').map(encodeURIComponent).join('/');
   const body = { message, content: b64enc(content), branch: cfg().branch };
   try {
-    const cur = await gh('/contents/' + encodeURIComponent(filePath) + '?ref=' + encodeURIComponent(cfg().branch));
+    const cur = await gh(apiPath + '?ref=' + encodeURIComponent(cfg().branch));
     if (cur && cur.sha) body.sha = cur.sha;   // existing file → update it
   } catch (e) {
     if (!/GitHub 404/.test(e.message)) throw e;  // 404 = new file, fine
   }
-  return gh('/contents/' + encodeURIComponent(filePath), { method: 'PUT', body });
+  return gh(apiPath, { method: 'PUT', body });
+}
 
 /* ---------- add channel ---------- */
 async function addChannel() {

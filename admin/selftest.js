@@ -79,8 +79,11 @@ const res = (status, json) => ({ ok: status < 400, status, json: async () => jso
   assert(w.localStorage.getItem('channeladmin.token') === 'github_pat_TESTTOKEN', 'token kept in browser localStorage only');
   assert(!files['channels.json'].includes('TESTTOKEN'), 'no secret ever written to channels.json');
 
-  // 4. Add a channel.
+  // 4. Add a channel. (slug('ESPN 4 (Argentina)') = 'espn4(argentina)' — the
+  //    dashboard's slug keeps parentheses, matching existing repo files like
+  //    beinsportsmena2(eng).html.)
   const before = JSON.parse(files['channels.json']).channels.length;
+  const NEWFILE = 'espn4(argentina).html';
   $('chName').value = 'ESPN 4 (Argentina)';
   $('chUrl').value = 'https://dlive.sx/cast/stream-900.php';
   $('addBtn').click();
@@ -89,16 +92,16 @@ const res = (status, json) => ({ ok: status < 400, status, json: async () => jso
   const ch = JSON.parse(files['channels.json']);
   assert(ch.channels.length === before + 1, 'channels.json gained entry');
   assert(!('owner' in ch) && !('repo' in ch), 'owner/repo stripped from public channels.json');
-  assert(files['espn4argentina.html'].includes('https://dlive.sx/cast/stream-900.php'), 'new page committed with stream URL');
-  assert(files['index.html'].includes('<a href="espn4argentina.html">ESPN 4 (Argentina)</a>'), 'index.html regenerated with new card');
+  assert(files[NEWFILE] && files[NEWFILE].includes('https://dlive.sx/cast/stream-900.php'), 'new page committed with stream URL');
+  assert(files['index.html'].includes('<a href="' + encodeURI(NEWFILE) + '">ESPN 4 (Argentina)</a>'), 'index.html regenerated with new card');
 
   // 5. Remove it again.
-  const btn = [...doc.querySelectorAll('#list button')].find(b => b.dataset.file === 'espn4argentina.html');
+  const btn = [...doc.querySelectorAll('#list button')].find(b => b.dataset.file === NEWFILE);
   assert(!!btn, 'remove button rendered');
   btn.click();
   await new Promise(r => setTimeout(r, 700));
   assert(JSON.parse(files['channels.json']).channels.length === before, 'channel removed from channels.json');
-  assert(!files['index.html'].includes('espn4argentina.html'), 'index.html regenerated without it');
+  assert(!files['index.html'].includes(NEWFILE), 'index.html regenerated without it');
 
   // 6. Preview builds locally, nothing uploaded.
   $('chName').value = 'Test Preview'; $('chUrl').value = 'https://dlive.sx/cast/stream-885.php';
