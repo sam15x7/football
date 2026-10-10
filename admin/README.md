@@ -4,9 +4,35 @@ The public `index.html` **no longer contains any "Add channel" form or token
 logic** — visitors can only browse and search. Channels are added/removed from
 this backend, and `index.html` updates automatically.
 
-## Two ways to manage channels (pick whichever you like)
+## Three ways to manage channels (pick whichever you like)
 
-### A. Local dashboard — the old "click + paste URL" flow ⭐ recommended
+### A0. Double-click dashboard — NO npm, NO server ⭐ easiest
+
+Just open this file in your browser by **double-clicking it** (or drag it into a browser window):
+
+```
+admin/index.html        ← local-only, git-ignored: it is NOT in the public repo
+```
+
+1. One time: revoke the old token that lived in the public browser page
+   (<https://github.com/settings/tokens>) and create a **fresh fine-grained PAT**
+   at <https://github.com/settings/personal-access-tokens/new>
+   (*Only select repositories* → this repo; **Contents = Read and write** only).
+2. In the dashboard: paste the token + owner/repo, click **💾 Save & verify**.
+   It is stored in *this browser's* localStorage under the `file://` origin —
+   never uploaded anywhere except api.github.com over HTTPS, never committed.
+3. Add channels forever after: **paste the stream URL**, hit Enter.
+   The dashboard commits `<channel>.html` (built from `template.html`,
+   structure unchanged), `channels.json`, and regenerated `index.html`.
+   GitHub Pages redeploys (~30–60 s) and the new card is live.
+4. Remove channels with one click; **Forget token** wipes it anytime.
+5. Keep a private backup of `admin/index.html` somewhere safe (Dropbox/USB) —
+   since it's git-ignored, GitHub does not have a copy. Losing the file is
+   harmless: nothing secret is inside it; just re-download or ask for a new copy.
+
+(If your browser blocks `file://` pages from calling the GitHub API — rare — use A below.)
+
+### A. Local dashboard via tiny server (needs Node, no install steps)
 
 ```bash
 npm run admin          # = node admin/serve.js
