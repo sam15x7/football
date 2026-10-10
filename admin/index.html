@@ -19,8 +19,10 @@
      sent anywhere except api.github.com, and visitors simply see the login
      screen like any other page. Use "Forget token" to wipe it.
    · The Add / Remove buttons are wired behind a lock: they activate only after
-     the stored token authenticates against THIS exact repo (gh(/users) probe +
-     template/index/channels.json all fetched through the authenticated API).
+     the stored token authenticates against THIS exact repo (api.github.com/user
+     probe + template/index/channels.json all fetched through the authenticated
+     API). If the token belongs to a different account than the owner field, the
+     repo itself is probed — collaborators with repo access still unlock.
    · GitHub enforces the real gate: a fine-grained PAT scoped to this repo with
      "Contents: Read & write". No token → no writes, period.
 -->
@@ -154,19 +156,39 @@ function cfg() {
 function token() { return MEM_TOKEN || localStorage.getItem(LS_TOKEN) || ''; }
 
 /* ---------- GitHub API (browser -> api.github.com directly; no proxy, no server) ---------- */
+// Probe the stored token against /user (the authenticated viewer). Robust:
+// returns null instead of throwing so callers can produce clear messages.
+async function whoami() {
+  const t = token();
+  if (!t) return null;
+  try {
+    const r = await fetch('https://api.github.com/user', { headers: {
+      'Authorization': 'Bearer ' + t,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28' } });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return (j && j.login) ? j.login : null;
+  } catch (_) { return null; }
+}
+
 async function gh(pathname, opts = {}) {
   if (!token()) throw new Error('No GitHub token — paste your fine-grained PAT in section 1 and press Save.');
   const c = cfg();
-  let r;
-  if (pathname === '/users') {
+  let url;
+  if (pathname === '/user') {
     // token probe — not repo-scoped
-    r = await fetch('https://api.github.com/users', { headers: {
-      'Authorization': 'Bearer ' + token(),
-      'Accept': 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28' } });
+    url = 'https://api.github.com/user';
+  } else if (pathname.indexOf('/repos/') === 0) {
+    // absolute path already contains /repos/<owner>/<repo>
+    url = 'https://api.github.com' + pathname;
   } else {
     if (!c.owner || !c.repo) throw new Error('Fill in the GitHub owner and repository first.');
-    r = await fetch('https://api.github.com/repos/' + encodeURIComponent(c.owner) + '/' + encodeURIComponent(c.repo) + pathname, {
+    url = 'https://api.github.com/repos/' + encodeURIComponent(c.owner) + '/' + encodeURIComponent(c.repo) + pathname;
+  }
+  let r;
+  try {
+    r = await fetch(url, {
       method: opts.method || 'GET',
       headers: {
         'Authorization': 'Bearer ' + token(),
@@ -176,9 +198,13 @@ async function gh(pathname, opts = {}) {
       },
       body: opts.body ? JSON.stringify(opts.body) : undefined
     });
+  } catch (e) {
+    throw new Error('Network request to GitHub failed (' + e.message + '). Check your internet connection and retry.');
   }
   if (!r.ok) {
     let detail = ''; try { detail = (await r.json()).message; } catch (_) {}
+    if (r.status === 404) detail += ' — (404 can also mean: wrong owner/repo spelling, wrong branch, or a fine-grained token that was NOT granted access to this repository.)';
+    if (r.status === 401) detail = (detail || 'Bad credentials') + ' — the token is invalid or expired. Generate a fresh fine-grained PAT.';
     throw new Error('GitHub ' + r.status + (detail ? ': ' + detail : ''));
   }
   return r.status === 204 ? null : r.json();
@@ -199,20 +225,38 @@ let SHA = {};             // path -> sha per commit batch
 
 async function loadAll() {
   setStatus($('connStatus'), 'Verifying token & loading repo files…');
-  // Gate: the stored token must authenticate against THIS exact repo.
-  // Until this succeeds, Add/Remove stay hidden — visitors without a valid
-  // fine-grained PAT can never reach the write functions.
-  const who = await gh('/users');                       // throws on bad/expired token
   const c0 = cfg();
-  if (who.login.toLowerCase() !== c0.owner.toLowerCase()) {
-    throw new Error('Token belongs to @' + who.login + ' but owner field says "' + c0.owner + '". Fix the owner field.');
+  if (!c0.owner || !c0.repo) {
+    throw new Error('Owner and repository fields are required. They are normally pre-filled from this page\'s URL — check they are correct (e.g. "sam15x7" / your repo name).');
+  }
+  // Gate: the stored token must authenticate. Until this succeeds, Add/Remove
+  // stay hidden — visitors without a valid fine-grained PAT can never reach
+  // the write functions.
+  const login = await whoami();
+  if (!login) {
+    throw new Error('The token was rejected by GitHub (invalid, expired, or revoked). Create a new fine-grained PAT with "Contents: Read & write" access to this repository, paste it in section 1 and press Save again.');
+  }
+  if (login.toLowerCase() !== c0.owner.toLowerCase()) {
+    // Owner mismatch is only fatal if we cannot read the repo with this token.
+    // A collaborator's own token CAN manage the repo, so try reading first.
+    let readable = true;
+    try { await gh('/repos/' + encodeURIComponent(c0.owner) + '/' + encodeURIComponent(c0.repo)); }
+    catch (_) { readable = false; }
+    if (!readable) {
+      throw new Error('This token belongs to @' + login + ', which has no access to "' + c0.owner + '/' + c0.repo + '". Either fix the owner field (should be @' + login + '?) or grant that account access to the repo.');
+    }
   }
   const c = cfg();
   const [tpl, idx, ch] = await Promise.all([
     gh('/contents/template.html?ref=' + encodeURIComponent(c.branch)),
     gh('/contents/index.html?ref=' + encodeURIComponent(c.branch)),
     gh('/contents/channels.json?ref=' + encodeURIComponent(c.branch))
-  ]);
+  ]).catch(e => {
+    if (/404/.test(e.message)) {
+      throw new Error('Could not find template.html / index.html / channels.json on branch "' + c.branch + '" of ' + c.owner + '/' + c.repo + '. Check the repo name, branch, and that the fine-grained token was created with THIS repository selected under "Repository access".');
+    }
+    throw e;
+  });
   TEMPLATE = b64(tpl.content); SHA['template.html'] = tpl.sha;
   INDEX_HTML = b64(idx.content); SHA['index.html'] = idx.sha;
   const data = JSON.parse(b64(ch.content)); SHA['channels.json'] = ch.sha;
@@ -228,7 +272,7 @@ async function loadAll() {
   delete CHANNELS_RAW.repo;
   $('count').textContent = CHANNELS.length + ' channels';
   renderList();
-  setStatus($('connStatus'), 'Unlocked ✓ as @' + who.login + ' → ' + cfg().owner + '/' + cfg().repo + '@' + cfg().branch, 'ok');
+  setStatus($('connStatus'), 'Unlocked ✓ as @' + login + ' → ' + cfg().owner + '/' + cfg().repo + '@' + cfg().branch, 'ok');
   $('addCard').classList.remove('hidden');
   $('listCard').classList.remove('hidden');
   return data;
@@ -418,13 +462,22 @@ function refreshTokenState() {
   $('token').value = '';
   return has;
 }
-$('saveToken').onclick = () => {
+$('saveToken').onclick = async () => {
   const t = $('token').value.trim();
   if (!t) return setStatus($('connStatus'), 'Paste the token first.', 'err');
   if (!/^(github_pat_|gh[puroe]_)/i.test(t)) return setStatus($('connStatus'), 'Does not look like a GitHub PAT (github_pat_… or ghp_…).', 'err');
   MEM_TOKEN = t;                                   // active for this tab no matter what
+  refreshTokenState();                             // pill now says "stored ✓" immediately
   if (!$('owner').value.trim() || !$('repo').value.trim()) {
-    return setStatus($('connStatus'), 'Fill in the GitHub owner and repository fields first — then press Save again.', 'err');
+    // Owner unknown? Ask GitHub whose token this is and fill it in automatically.
+    if (!$('owner').value.trim()) {
+      setStatus($('connStatus'), 'Checking token with GitHub…');
+      const me = await whoami();
+      if (me) $('owner').value = me;
+    }
+    if (!$('owner').value.trim() || !$('repo').value.trim()) {
+      return setStatus($('connStatus'), 'Fill in the GitHub owner and repository fields first — they are normally pre-filled from this page\'s URL (' + location.hostname + '). Then press Save again.', 'err');
+    }
   }
   try {
     localStorage.setItem(LS_TOKEN, t);
@@ -433,7 +486,6 @@ $('saveToken').onclick = () => {
     // Private Browsing / blocked storage — keep working for THIS tab via memory.
     setStatus($('connStatus'), '⚠ Browser storage is blocked (Private Browsing?) — token kept in this tab only; you\'ll need to paste it again next time.', 'err');
   }
-  refreshTokenState();
   loadAll().catch(e => setStatus($('connStatus'), '✗ ' + e.message + ' — check owner/repo/token.', 'err'));
 };
 $('forgetToken').onclick = () => {
@@ -482,7 +534,10 @@ document.addEventListener('keydown', e => {
   // Last resort: ask GitHub which account the stored token belongs to and use
   // that as the owner — one less field that can silently block the Save button.
   if (!$('owner').value && token()) {
-    try { $('owner').value = (await gh('/users')).login; } catch (_) {}
+    try {
+      const me = await whoami();
+      if (me) $('owner').value = me;
+    } catch (_) {}
   }
 
   const hasToken = refreshTokenState();

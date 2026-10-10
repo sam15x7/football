@@ -26,7 +26,8 @@ function api(url, opts) {
   const auth = (opts.headers && (opts.headers.Authorization || opts.headers.authorization)) || '';
   if (!auth.startsWith('Bearer github_pat_TESTTOKEN')) return Promise.resolve(res(401, { message: 'Bad credentials' }));
   let m;
-  if (u.pathname === '/users') return Promise.resolve(res(200, { login: owner }));
+  if (u.pathname === '/user') return Promise.resolve(res(200, { login: owner }));
+  if (u.pathname === '/repos/' + owner + '/' + repo) return Promise.resolve(res(200, { full_name: owner + '/' + repo }));
   if ((m = u.pathname.match(new RegExp('^/repos/' + owner + '/' + repo + '/contents/(.+)$')))) {
     const p = decodeURIComponent(m[1]);
     if ((opts.method || 'GET') === 'PUT') {
