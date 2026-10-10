@@ -161,15 +161,20 @@ function token() { return MEM_TOKEN || localStorage.getItem(LS_TOKEN) || ''; }
 async function whoami() {
   const t = token();
   if (!t) return null;
+  let j = null;
   try {
+    // NOTE: the endpoint is /user (the authenticated viewer). /users returns a
+    // USER LIST without .login — that is what caused "who.login is undefined".
     const r = await fetch('https://api.github.com/user', { headers: {
       'Authorization': 'Bearer ' + t,
       'Accept': 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28' } });
     if (!r.ok) return null;
-    const j = await r.json();
-    return (j && j.login) ? j.login : null;
+    j = await r.json();
   } catch (_) { return null; }
+  // Defensive: whatever shape GitHub returns, we NEVER touch a property of an
+  // undefined value. If login is missing we treat the token as rejected.
+  return (j && typeof j.login === 'string') ? j.login : null;
 }
 
 async function gh(pathname, opts = {}) {
@@ -236,7 +241,7 @@ async function loadAll() {
   if (!login) {
     throw new Error('The token was rejected by GitHub (invalid, expired, or revoked). Create a new fine-grained PAT with "Contents: Read & write" access to this repository, paste it in section 1 and press Save again.');
   }
-  if (login.toLowerCase() !== c0.owner.toLowerCase()) {
+  if (String(login).toLowerCase() !== String(c0.owner).toLowerCase()) {
     // Owner mismatch is only fatal if we cannot read the repo with this token.
     // A collaborator's own token CAN manage the repo, so try reading first.
     let readable = true;
@@ -463,6 +468,10 @@ function refreshTokenState() {
   return has;
 }
 $('saveToken').onclick = async () => {
+  try { await saveTokenImpl(); }
+  catch (e) { setStatus($('connStatus'), '✗ ' + (e && e.message || e), 'err'); }
+};
+async function saveTokenImpl() {
   const t = $('token').value.trim();
   if (!t) return setStatus($('connStatus'), 'Paste the token first.', 'err');
   if (!/^(github_pat_|gh[puroe]_)/i.test(t)) return setStatus($('connStatus'), 'Does not look like a GitHub PAT (github_pat_… or ghp_…).', 'err');
@@ -542,7 +551,7 @@ document.addEventListener('keydown', e => {
 
   const hasToken = refreshTokenState();
   if (hasToken && $('owner').value && $('repo').value) {
-    loadAll().catch(e => setStatus($('connStatus'), '✗ ' + e.message, 'err'));
+    loadAll().catch(e => setStatus($('connStatus'), '✗ ' + ((e && e.message) || e), 'err'));
   } else if (hasToken) {
     setStatus($('connStatus'), 'Token found in this browser ✓ — enter the repository name, then press Save token to unlock.');
   } else {
