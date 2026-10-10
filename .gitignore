@@ -8,6 +8,11 @@ admin/token.enc
 # Local env file used by the admin scripts
 admin/.env
 
+# ── LOCAL-ONLY admin dashboard (double-click it; never commit) ──
+# It contains no secrets itself, but it is YOUR private tool — keeping it out
+# of the public repo means visitors can't even find out how the backend works.
+admin/index.html
+
 # Node bits
 node_modules/
 package-lock.json
