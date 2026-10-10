@@ -8,10 +8,10 @@ admin/token.enc
 # Local env file used by the admin scripts
 admin/.env
 
-# ── LOCAL-ONLY admin dashboard (double-click it; never commit) ──
-# It contains no secrets itself, but it is YOUR private tool — keeping it out
-# of the public repo means visitors can't even find out how the backend works.
-admin/index.html
+# The admin dashboard IS committed now (admin/index.html) — it is hosted on
+# GitHub Pages and intentionally public: it carries ZERO secrets. The GitHub
+# PAT lives only in the admin's browser localStorage; without it the page is
+# just a login screen and GitHub rejects every write attempt.
 
 # Node bits
 node_modules/
