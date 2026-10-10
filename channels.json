@@ -1,8 +1,6 @@
 {
-  "owner": "",
-  "repo": "",
   "branch": "main",
-  "_note": "Source of truth for the channel list. index.html is GENERATED from this file (admin/add-channel.js or the admin dashboard keep both in sync). The GitHub owner/repo/branch used to publish are stored LOCALLY in your browser's localStorage by the admin dashboard (and in channels.json only as a convenience hint) \u2014 never put a token in this public file; tokens live only in the encrypted vault admin/token.enc, GH_TOKEN env, or your browser's localStorage.",
+  "_note": "Source of truth for the channel list. index.html is GENERATED from this file (admin/add-channel.js or the admin dashboard keep both in sync). The GitHub owner/repo/branch used to publish are stored LOCALLY in your browser's localStorage by the admin dashboard (and in channels.json only as a convenience hint) — never put a token in this public file; tokens live only in the encrypted vault admin/token.enc, GH_TOKEN env, or your browser's localStorage.",
   "channels": [
     {
       "file": "ZDFDE.html",
@@ -151,10 +149,6 @@
     {
       "file": "espnu.html",
       "name": "ESPN U"
-    },
-    {
-      "file": "starsports1in.html",
-      "name": "Star Sports 1 IN"
     },
     {
       "file": "maxsport1bulgaria.html",
