@@ -290,32 +290,116 @@ async function ghFetch(token, cfg, p, init) {
   return fetch(url, Object.assign({}, init, { headers: ghHeaders(token) }));
 }
 
+// URL-encode each path segment individually — encodeURIComponent on the WHOLE
+// path would turn "a/b.html" into "a%2Fb.html", which GitHub's Contents API
+// does not resolve as a nested path.
+function encodePath(p) {
+  return String(p).split('/').map(encodeURIComponent).join('/');
+}
+
+// Read a file's CURRENT sha from GitHub with cache-busting (?ref=<branch>, no
+// If-None-Match). A stale/304-cached response without a sha is treated as a
+// miss so callers never send an undefined "sha".
 async function fetchRemoteFile(token, cfg, filePath) {
   const r = await ghFetch(token, cfg,
-    '/contents/' + encodeURIComponent(filePath) + '?ref=' + encodeURIComponent(cfg.branch),
-    { method: 'GET' });
+    '/contents/' + encodePath(filePath) + '?ref=' + encodeURIComponent(cfg.branch),
+    { method: 'GET', cache: 'no-store' });
   if (r.status === 404) return { exists: false, sha: null, content: null };
   if (!r.ok) throw new Error('GitHub read failed (' + r.status + ') for ' + filePath + '. Check owner/repo/token.');
   const j = await r.json();
+  // Directories/symlinks come back as arrays — never usable as a file sha.
+  const sha = (!Array.isArray(j) && typeof j.sha === 'string' && j.sha) || null;
   return {
-    exists: true,
-    sha: j.sha,
-    content: j.content ? Buffer.from(j.content.replace(/\n/g, ''), 'base64').toString('utf8') : ''
+    exists: !!sha,
+    sha,
+    content: j.content ? Buffer.from(String(j.content).replace(/\n/g, ''), 'base64').toString('utf8') : ''
   };
 }
 
+/* ------------------------- atomic multi-file commits ------------------------
+ * The Data API (git/refs + git/trees + git/commits + PATCH ref) writes several
+ * files in ONE commit and NEVER requires a per-file blob sha — only the parent
+ * commit's sha. This sidesteps the classic GitHub Contents-API failure:
+ *   422 Invalid request. "sha" wasn't supplied.
+ * which happens whenever the cached sha of a file goes missing/stale (e.g. a
+ * browser-cached GET, or the file changed between reading and writing).
+ * --------------------------------------------------------------------------- */
+
+async function getBranchHeadSha(token, cfg) {
+  const r = await ghFetch(token, cfg, '/git/ref/heads/' + encodeURIComponent(cfg.branch), { method: 'GET' });
+  if (!r.ok) throw new Error('GitHub could not read branch "' + cfg.branch + '" (' + r.status +
+                             '). Check owner/repo/token and that the branch exists.');
+  const j = await r.json();
+  const sha = j && j.object && j.object.sha;
+  if (!sha) throw new Error('GitHub returned no HEAD sha for branch "' + cfg.branch + '".');
+  return sha;
+}
+
+// files: [{ path, content }] — all entries land in one commit on cfg.branch.
+async function commitFiles(token, cfg, files, message) {
+  const clean = files.map(f => ({ path: String(f.path).replace(/^\/+/, ''), content: f.content }));
+  for (const f of clean) {
+    if (!f.path) throw new Error('Empty file path in commit batch.');
+    if (typeof f.content !== 'string') throw new Error('Content for ' + f.path + ' must be a string.');
+  }
+  const headSha = await getBranchHeadSha(token, cfg);          // fresh every call → no stale parents
+  const blobs = await Promise.all(clean.map(async f => {
+    const r = await ghFetch(token, cfg, '/git/blobs', {
+      method: 'POST',
+      body: JSON.stringify({ content: Buffer.from(f.content, 'utf8').toString('base64'), encoding: 'base64' })
+    });
+    if (!r.ok) throw new Error('GitHub blob upload failed (' + r.status + ') for ' + f.path + ': ' + (await r.text()).slice(0, 200));
+    const j = await r.json();
+    if (!j.sha) throw new Error('GitHub returned no sha for blob ' + f.path + '.');
+    return { path: f.path, mode: '100644', type: 'blob', sha: j.sha };
+  }));
+  const rt = await ghFetch(token, cfg, '/git/trees', {
+    method: 'POST',
+    body: JSON.stringify({ base_tree: headSha, tree: blobs })
+  });
+  if (!rt.ok) throw new Error('GitHub tree creation failed (' + rt.status + '): ' + (await rt.text()).slice(0, 200));
+  const tree = await rt.json();
+  const rc = await ghFetch(token, cfg, '/git/commits', {
+    method: 'POST',
+    body: JSON.stringify({ message, parents: [headSha], tree: tree.sha })
+  });
+  if (!rc.ok) throw new Error('GitHub commit creation failed (' + rc.status + '): ' + (await rc.text()).slice(0, 200));
+  const commit = await rc.json();
+  const rr = await ghFetch(token, cfg, '/git/refs/heads/' + encodeURIComponent(cfg.branch), {
+    method: 'PATCH',
+    body: JSON.stringify({ sha: commit.sha, force: false })
+  });
+  if (!rr.ok) throw new Error('GitHub could not advance "' + cfg.branch + '" (' + rr.status + '): ' + (await rr.text()).slice(0, 200));
+  return commit;
+}
+
+// Single-file convenience wrapper (atomic Data API — no per-file sha needed).
 async function commitFile(token, cfg, filePath, content, message) {
-  const cur = await fetchRemoteFile(token, cfg, filePath);
-  const body = {
-    message,
-    content: Buffer.from(content, 'utf8').toString('base64'),
-    branch: cfg.branch
-  };
-  if (cur.exists) body.sha = cur.sha;
-  const r = await ghFetch(token, cfg, '/contents/' + encodeURIComponent(filePath),
-    { method: 'PUT', body: JSON.stringify(body) });
-  if (!r.ok) throw new Error('GitHub write failed (' + r.status + ') for ' + filePath + ': ' + (await r.text()).slice(0, 200));
-  return r.json();
+  return commitFiles(token, cfg, [{ path: filePath, content }], message);
+}
+
+// Delete a remote file atomically (tree entry with null sha).
+async function deleteFile(token, cfg, filePath, message) {
+  const headSha = await getBranchHeadSha(token, cfg);
+  const rt = await ghFetch(token, cfg, '/git/trees', {
+    method: 'POST',
+    body: JSON.stringify({ base_tree: headSha, tree: [{ path: filePath, mode: '100644', type: 'blob', sha: null }] })
+  });
+  if (rt.status === 422) return false;                          // path not on the branch — nothing to delete
+  if (!rt.ok) throw new Error('GitHub tree creation failed (' + rt.status + '): ' + (await rt.text()).slice(0, 200));
+  const tree = await rt.json();
+  const rc = await ghFetch(token, cfg, '/git/commits', {
+    method: 'POST',
+    body: JSON.stringify({ message, parents: [headSha], tree: tree.sha })
+  });
+  if (!rc.ok) throw new Error('GitHub commit creation failed (' + rc.status + '): ' + (await rc.text()).slice(0, 200));
+  const commit = await rc.json();
+  const rr = await ghFetch(token, cfg, '/git/refs/heads/' + encodeURIComponent(cfg.branch), {
+    method: 'PATCH',
+    body: JSON.stringify({ sha: commit.sha, force: false })
+  });
+  if (!rr.ok) throw new Error('GitHub could not advance "' + cfg.branch + '" (' + rr.status + '): ' + (await rr.text()).slice(0, 200));
+  return true;
 }
 
 module.exports = {
@@ -327,5 +411,5 @@ module.exports = {
   loadTemplate, buildPage,
   renderIndexLinks, regenerateIndexLocal, regenerateIndexString,
   upsertChannelEntry, removeChannelEntry,
-  fetchRemoteFile, commitFile
+  encodePath, getBranchHeadSha, fetchRemoteFile, commitFile, commitFiles, deleteFile
 };
