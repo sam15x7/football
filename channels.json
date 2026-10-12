@@ -189,6 +189,10 @@
     {
       "file": "appletv.html",
       "name": "Apple TV"
+    },
+    {
+      "file": "astrosupersport2.html",
+      "name": "Astro SuperSport 2"
     }
   ]
 }
