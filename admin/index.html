@@ -324,7 +324,15 @@ function regenerateIndex() {
  * The Data API path below (branch HEAD → blobs → tree → commit → PATCH ref)
  * only ever sends the parent COMMIT sha, which is read fresh from GitHub right
  * before each write — so that 422 can no longer occur, and every publish lands
- * as ONE atomic commit (all-or-nothing).                                          */
+ * as ONE atomic commit (all-or-nothing).
+ *
+ * And when ANOTHER push lands between our HEAD read and the PATCH ref step,
+ * GitHub answers:
+ *     422 Update is not a fast forward
+ * We now treat that as a normal race: re-read the fresh HEAD, rebuild the
+ * commit on top of it and retry (up to 3 attempts); if the branch keeps
+ * moving, we create a merge commit (parents = [ours, remoteTip]) which IS a
+ * descendant of the new tip, so advancing the ref succeeds again.            */
 async function ghHeadSha() {
   const c = cfg();
   const ref = await gh('/git/ref/heads/' + encodeURIComponent(c.branch));
@@ -333,10 +341,24 @@ async function ghHeadSha() {
   return sha;
 }
 
-// files: [{ path, content }] — all entries land in one commit on the branch.
-async function commitFiles(files, message) {
+// Advance the branch ref WITHOUT force. Returns 'ok' or 'conflict' (the
+// recoverable "Update is not a fast forward" / stale-info case); throws on
+// anything else.
+async function advanceRef(commitSha) {
   const c = cfg();
-  const head = await ghHeadSha();                               // fresh parent sha, every time
+  try {
+    await gh('/git/refs/heads/' + encodeURIComponent(c.branch), {
+      method: 'PATCH', body: { sha: commitSha, force: false } });
+    return 'ok';
+  } catch (e) {
+    if (/GitHub 422:.*not a fast[- ]?forward/i.test(e.message || '')) return 'conflict';
+    throw e;
+  }
+}
+
+// Build blobs + tree + single-parent commit on top of the CURRENT head.
+async function buildCommit(files, message) {
+  const head = await ghHeadSha();                               // fresh parent sha, every attempt
   const tree = [];
   for (const f of files) {
     const b = await gh('/git/blobs', { method: 'POST', body: {
@@ -346,9 +368,37 @@ async function commitFiles(files, message) {
   }
   const t = await gh('/git/trees', { method: 'POST', body: { base_tree: head, tree } });
   const commit = await gh('/git/commits', { method: 'POST', body: { message, parents: [head], tree: t.sha } });
-  await gh('/git/refs/heads/' + encodeURIComponent(c.branch), {
-    method: 'PATCH', body: { sha: commit.sha, force: false } });
-  return commit;
+  return { commit, head };
+}
+
+// files: [{ path, content }] — all entries land in one commit on the branch.
+async function commitFiles(files, message) {
+  const { commit, head } = await buildCommit(files, message);
+  if (await advanceRef(commit.sha) === 'ok') return commit;
+  // Lost the race once → rebuild on the new tip and retry (max 3 extra times).
+  let last;
+  for (let i = 0; i < 3; i++) {
+    await new Promise(r => setTimeout(r, 500 * (i + 1)));       // small backoff
+    const again = await buildCommit(files, message);
+    last = again;
+    if (await advanceRef(again.commit.sha) === 'ok') return again.commit;
+  }
+  // Persistent race: merge the remote tip INTO our commit so advancing the
+  // ref is a fast-forward by construction.
+  const ours = last ? last.commit : commit;
+  const remoteTip = await ghHeadSha();
+  if (remoteTip === ours.parents[0].sha) {
+    throw new Error('GitHub 422: Update is not a fast forward on "' + cfg().branch +
+                    '". The branch may be protected; please retry shortly.');
+  }
+  const merge = await gh('/git/commits', { method: 'POST', body: {
+    message: 'Merge latest "' + cfg().branch + '" changes (admin auto-retry)',
+    parents: [ours.sha, remoteTip], tree: ours.tree.sha } });
+  if (await advanceRef(merge.sha) !== 'ok') {
+    throw new Error('GitHub 422: Update is not a fast forward — "' + cfg().branch +
+                    '" changed repeatedly during this write. Nothing was committed; please retry.');
+  }
+  return merge;
 }
 
 /* ---------- write helpers with retry & recovery ---------- */

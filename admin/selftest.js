@@ -27,6 +27,12 @@ let headSha = 'commit-initial';
 const commits = { 'commit-initial': { tree: 'tree-initial' } };
 const trees = {};     // tree sha  -> { base, entries:[{path,sha}] }
 const blobs = {};     // blob sha  -> content string
+// Race simulation for the "Update is not a fast forward" recovery test:
+// when set, the NEXT ref PATCH fails once with that exact 422 and a fake
+// concurrent commit lands on the branch first — exactly like another admin
+// tab / CLI pushing mid-flight.
+let injectFastForwardConflict = false;
+let ffConflictsSeen = 0;
 trees['tree-initial'] = { base: null, entries: Object.entries(initialFiles).map(([p, c]) => {
   const sha = shaOf(c); blobs[sha] = c; return { path: p, sha };
 }) };
@@ -56,6 +62,20 @@ function api(url, opts) {
   if ((m = u.pathname.match(new RegExp(PRE + '/git/(?:ref|refs)/heads/(.+)$')))) {
     if (method === 'PATCH') {
       if (!commits[body.sha]) return Promise.resolve(res(422, { message: 'Invalid request.' }));
+      if (injectFastForwardConflict) {
+        // Simulate a concurrent push landing AFTER our caller read HEAD:
+        // advance the mock branch with an unrelated commit and refuse this
+        // PATCH exactly like GitHub does — "Update is not a fast forward".
+        injectFastForwardConflict = false;
+        ffConflictsSeen++;
+        const intruderTree = shaOf('intruder-tree-' + ffConflictsSeen);
+        trees[intruderTree] = { base: commits[headSha].tree, entries: [{ path: 'other.txt', sha: shaOf('intruder-' + ffConflictsSeen) }] };
+        blobs[shaOf('intruder-' + ffConflictsSeen)] = 'intruder';
+        const intruder = shaOf('intruder-commit-' + ffConflictsSeen);
+        commits[intruder] = { tree: intruderTree, parents: [headSha] };
+        headSha = intruder;
+        return Promise.resolve(res(422, { message: 'Update is not a fast forward' }));
+      }
       if (body.sha === headSha) return Promise.resolve(res(304, { message: 'Not modified' }));
       headSha = body.sha;
       writes.push('commit:' + body.sha.slice(0, 8));
@@ -84,8 +104,12 @@ function api(url, opts) {
       return Promise.resolve(res(422, { message: 'Invalid request. Parent does not exist' }));
     }
     const sha = shaOf(JSON.stringify(body));
-    commits[sha] = { tree: body.tree };
-    return Promise.resolve(res(201, { sha, message: body.message }));
+    // Store parents + tree so callers can read commit.parents[0] / commit.tree.sha
+    // back (the dashboard's merge-recovery path needs both).
+    commits[sha] = { tree: body.tree, parents };
+    return Promise.resolve(res(201, { sha, message: body.message,
+                                      parents: parents.map(p => ({ sha: p })),
+                                      tree: { sha: body.tree } }));
   }
   // ---------- Contents API (read-only now — GET only) ----------
   if ((m = u.pathname.match(new RegExp(PRE + '/contents/(.+)$')))) {
@@ -174,6 +198,29 @@ const files = () => materializeTree(commits[headSha].tree);
   $('previewBtn').click();
   assert(true, 'preview ran without throwing');
 
-  console.log('\nALL SELF-TESTS PASSED ✔  (mock writes: ' + writes.join(', ') + ')');
+  // 7. "Update is not a fast forward" race recovery: a concurrent push lands
+  //    between the dashboard's HEAD read and its ref PATCH. The dashboard must
+  //    rebuild on the new tip and still commit successfully — no user-visible
+  //    error, and the intruder's change must survive (nothing clobbered).
+  const beforeRace = JSON.parse(F()['channels.json']).channels.length;
+  injectFastForwardConflict = true;
+  $('chName').value = 'Race Channel';
+  $('chUrl').value = 'https://dlive.sx/cast/stream-911.php';
+  $('addBtn').click();
+  for (let i = 0; i < 200 && !/Added|Updated|✗/.test($('addStatus').textContent); i++) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+  assert(ffConflictsSeen === 1, 'mock actually delivered one fast-forward conflict');
+  assert(/Added|Updated/.test($('addStatus').textContent),
+         'write recovered from "Update is not a fast forward": ' + $('addStatus').textContent);
+  const Ff = () => materializeTree(commits[headSha].tree);
+  assert(Ff()['other.txt'] === 'intruder', 'concurrent intruder commit preserved after retry');
+  assert(JSON.parse(Ff()['channels.json']).channels.length === beforeRace + 1,
+         'raced channel still registered in channels.json');
+  assert(Ff()['racechannel.html'] && Ff()['racechannel.html'].includes('stream-911'),
+         'raced page committed with stream URL');
+
+  console.log('\nALL SELF-TESTS PASSED ✔  (mock writes: ' + writes.join(', ') +
+              '; fast-forward conflicts recovered: ' + ffConflictsSeen + ')');
   process.exit(0);
 })().catch(e => { console.error('CRASH:', e); process.exit(1); });

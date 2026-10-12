@@ -326,7 +326,8 @@ async function fetchRemoteFile(token, cfg, filePath) {
  * --------------------------------------------------------------------------- */
 
 async function getBranchHeadSha(token, cfg) {
-  const r = await ghFetch(token, cfg, '/git/ref/heads/' + encodeURIComponent(cfg.branch), { method: 'GET' });
+  const r = await ghFetch(token, cfg, '/git/ref/heads/' + encodeURIComponent(cfg.branch),
+                          { method: 'GET', cache: 'no-store' });
   if (!r.ok) throw new Error('GitHub could not read branch "' + cfg.branch + '" (' + r.status +
                              '). Check owner/repo/token and that the branch exists.');
   const j = await r.json();
@@ -335,42 +336,144 @@ async function getBranchHeadSha(token, cfg) {
   return sha;
 }
 
-// files: [{ path, content }] — all entries land in one commit on cfg.branch.
+/* ---------------- ref races: "Update is not a fast forward" -----------------
+ * PATCH /git/refs only advances the branch if the new commit's parent IS the
+ * current branch tip. If another push (a second admin tab, the CLI, or a
+ * manual git push) lands between our HEAD read and the PATCH, GitHub answers:
+ *   422 Update is not a fast forward
+ * Fix: optimistic concurrency control — on conflict, re-read the fresh HEAD,
+ * rebuild tree+commit on top of it, and retry (up to 3 attempts). If the race
+ * keeps losing, fall back to creating a MERGE commit whose parents are
+ * [ourCommit, remoteTip]: that commit is by construction a descendant of the
+ * remote tip, so advancing the ref to it IS a fast-forward again.
+ * --------------------------------------------------------------------------- */
+
+class RefConflictError extends Error {
+  constructor(message) { super(message); this.name = 'RefConflictError'; this.refConflict = true; }
+}
+
+function isRefConflict(status, text) {
+  return status === 422 && /not a fast[- ]?forward/i.test(text || '');
+}
+
+async function ghJson(r) {
+  try { return await r.json(); } catch (_) { return {}; }
+}
+
+// Build blobs + tree for `entries` on top of headSha. Returns the tree object.
+async function buildTree(token, cfg, headSha, entries) {
+  const blobs = await Promise.all(entries.map(async f => {
+    const r = await ghFetch(token, cfg, '/git/blobs', {
+      method: 'POST', cache: 'no-store',
+      body: JSON.stringify({ content: Buffer.from(f.content, 'utf8').toString('base64'), encoding: 'base64' })
+    });
+    if (!r.ok) throw new Error('GitHub blob upload failed (' + r.status + ') for ' + f.path + ': ' +
+                               String(await r.text().catch(() => '')).slice(0, 200));
+    const j = await ghJson(r);
+    if (!j.sha) throw new Error('GitHub returned no sha for blob ' + f.path + '.');
+    return { path: f.path, mode: '100644', type: 'blob', sha: j.sha };
+  }));
+  const rt = await ghFetch(token, cfg, '/git/trees', {
+    method: 'POST', cache: 'no-store',
+    body: JSON.stringify({ base_tree: headSha, tree: blobs })
+  });
+  if (!rt.ok) throw new Error('GitHub tree creation failed (' + rt.status + '): ' +
+                              String(await rt.text().catch(() => '')).slice(0, 200));
+  return ghJson(rt);
+}
+
+async function createCommit(token, cfg, message, parents, treeSha) {
+  const rc = await ghFetch(token, cfg, '/git/commits', {
+    method: 'POST', cache: 'no-store',
+    body: JSON.stringify({ message, parents, tree: treeSha })
+  });
+  if (!rc.ok) throw new Error('GitHub commit creation failed (' + rc.status + '): ' +
+                              String(await rc.text().catch(() => '')).slice(0, 200));
+  return ghJson(rc);
+}
+
+// Advance the branch ref WITHOUT force. Returns:
+//   { ok: true, commit } | { conflict: true } | throws on other errors.
+async function advanceRef(token, cfg, commitSha) {
+  const rr = await ghFetch(token, cfg, '/git/refs/heads/' + encodeURIComponent(cfg.branch), {
+    method: 'PATCH', cache: 'no-store',
+    body: JSON.stringify({ sha: commitSha, force: false })
+  });
+  if (rr.ok) return { ok: true };
+  const text = String(await rr.text().catch(() => ''));
+  // 422 "Update is not a fast forward" / stale-info → recoverable race.
+  if (isRefConflict(rr.status, text)) return { conflict: true };
+  // A commit identical to the current tip: nothing to do, treat as success.
+  if (rr.status === 304 || /not modified/i.test(text)) return { ok: true };
+  throw new Error('GitHub could not advance "' + cfg.branch + '" (' + rr.status + '): ' + text.slice(0, 200));
+}
+
+// One full attempt: fresh HEAD → tree → commit → non-forced PATCH ref.
+// Throws RefConflictError when the branch moved under us mid-flight.
+async function tryCommitOnce(token, cfg, entries, message, prebuiltTree) {
+  const headSha = await getBranchHeadSha(token, cfg);           // fresh every attempt
+  const tree = prebuiltTree || await buildTree(token, cfg, headSha, entries);
+  const commit = await createCommit(token, cfg, message, [headSha], tree.sha);
+  const res = await advanceRef(token, cfg, commit.sha);
+  if (res.conflict) throw new RefConflictError(
+    'Update is not a fast forward — another change landed on "' + cfg.branch + '" while committing.');
+  return commit;
+}
+
+// Commit `entries` on cfg.branch with up to `attempts` rebuild-on-race retries.
+async function commitWithRetry(token, cfg, entries, message, attempts) {
+  const max = attempts || 3;
+  let lastErr;
+  for (let i = 0; i < max; i++) {
+    try { return await tryCommitOnce(token, cfg, entries, message); }
+    catch (e) {
+      if (!e.refConflict) throw e;                              // real errors surface immediately
+      lastErr = e;
+      await new Promise(r => setTimeout(r, 500 * (i + 1)));     // small backoff before rebuilding
+    }
+  }
+  throw lastErr;
+}
+
+// Last-resort recovery when plain retries keep losing the race: build our
+// commit against the CURRENT tip, then merge the remote tip into it with a
+// two-parent commit (tree reused from ours). That merge commit descends from
+// whatever HEAD became, so advancing the ref to it is a fast-forward again.
+async function commitMerging(token, cfg, entries, message) {
+  const headA = await getBranchHeadSha(token, cfg);
+  const tree = await buildTree(token, cfg, headA, entries);
+  const ours = await createCommit(token, cfg, message, [headA], tree.sha);
+  const first = await advanceRef(token, cfg, ours.sha);
+  if (first.ok) return ours;                                    // no race after all
+  const remoteTip = await getBranchHeadSha(token, cfg);
+  if (remoteTip === headA) {
+    // Tip never moved yet PATCH refused — surface the original failure mode.
+    throw new Error('GitHub 422: Update is not a fast forward on "' + cfg.branch +
+                    '". The branch may be protected or behind by history we cannot see; retry shortly.');
+  }
+  const merge = await createCommit(
+    token, cfg,
+    'Merge latest "' + cfg.branch + '" changes (admin auto-retry)',
+    [ours.sha, remoteTip], tree.sha);
+  const second = await advanceRef(token, cfg, merge.sha);
+  if (second.ok) return merge;
+  throw new Error('GitHub 422: Update is not a fast forward — "' + cfg.branch +
+                  '" changed repeatedly during this write. Nothing was committed; please retry.');
+}
+
+// files: [{ path, content }] — all entries land in one atomic commit on cfg.branch.
 async function commitFiles(token, cfg, files, message) {
   const clean = files.map(f => ({ path: String(f.path).replace(/^\/+/, ''), content: f.content }));
   for (const f of clean) {
     if (!f.path) throw new Error('Empty file path in commit batch.');
     if (typeof f.content !== 'string') throw new Error('Content for ' + f.path + ' must be a string.');
   }
-  const headSha = await getBranchHeadSha(token, cfg);          // fresh every call → no stale parents
-  const blobs = await Promise.all(clean.map(async f => {
-    const r = await ghFetch(token, cfg, '/git/blobs', {
-      method: 'POST',
-      body: JSON.stringify({ content: Buffer.from(f.content, 'utf8').toString('base64'), encoding: 'base64' })
-    });
-    if (!r.ok) throw new Error('GitHub blob upload failed (' + r.status + ') for ' + f.path + ': ' + (await r.text()).slice(0, 200));
-    const j = await r.json();
-    if (!j.sha) throw new Error('GitHub returned no sha for blob ' + f.path + '.');
-    return { path: f.path, mode: '100644', type: 'blob', sha: j.sha };
-  }));
-  const rt = await ghFetch(token, cfg, '/git/trees', {
-    method: 'POST',
-    body: JSON.stringify({ base_tree: headSha, tree: blobs })
-  });
-  if (!rt.ok) throw new Error('GitHub tree creation failed (' + rt.status + '): ' + (await rt.text()).slice(0, 200));
-  const tree = await rt.json();
-  const rc = await ghFetch(token, cfg, '/git/commits', {
-    method: 'POST',
-    body: JSON.stringify({ message, parents: [headSha], tree: tree.sha })
-  });
-  if (!rc.ok) throw new Error('GitHub commit creation failed (' + rc.status + '): ' + (await rc.text()).slice(0, 200));
-  const commit = await rc.json();
-  const rr = await ghFetch(token, cfg, '/git/refs/heads/' + encodeURIComponent(cfg.branch), {
-    method: 'PATCH',
-    body: JSON.stringify({ sha: commit.sha, force: false })
-  });
-  if (!rr.ok) throw new Error('GitHub could not advance "' + cfg.branch + '" (' + rr.status + '): ' + (await rr.text()).slice(0, 200));
-  return commit;
+  try {
+    return await commitWithRetry(token, cfg, clean, message);
+  } catch (e) {
+    if (!e.refConflict) throw e;
+    return commitMerging(token, cfg, clean, message);           // persistent race → merge-commit fallback
+  }
 }
 
 // Single-file convenience wrapper (atomic Data API — no per-file sha needed).
@@ -378,28 +481,56 @@ async function commitFile(token, cfg, filePath, content, message) {
   return commitFiles(token, cfg, [{ path: filePath, content }], message);
 }
 
-// Delete a remote file atomically (tree entry with null sha).
+// Delete a remote file atomically (tree entry with null sha), with the same
+// race recovery: every attempt recomputes the delete-tree against the FRESH
+// branch tip, so a concurrent push can never produce
+// 422 "Update is not a fast forward" without an automatic rebuild+retry.
 async function deleteFile(token, cfg, filePath, message) {
-  const headSha = await getBranchHeadSha(token, cfg);
-  const rt = await ghFetch(token, cfg, '/git/trees', {
-    method: 'POST',
-    body: JSON.stringify({ base_tree: headSha, tree: [{ path: filePath, mode: '100644', type: 'blob', sha: null }] })
-  });
-  if (rt.status === 422) return false;                          // path not on the branch — nothing to delete
-  if (!rt.ok) throw new Error('GitHub tree creation failed (' + rt.status + '): ' + (await rt.text()).slice(0, 200));
-  const tree = await rt.json();
-  const rc = await ghFetch(token, cfg, '/git/commits', {
-    method: 'POST',
-    body: JSON.stringify({ message, parents: [headSha], tree: tree.sha })
-  });
-  if (!rc.ok) throw new Error('GitHub commit creation failed (' + rc.status + '): ' + (await rc.text()).slice(0, 200));
-  const commit = await rc.json();
-  const rr = await ghFetch(token, cfg, '/git/refs/heads/' + encodeURIComponent(cfg.branch), {
-    method: 'PATCH',
-    body: JSON.stringify({ sha: commit.sha, force: false })
-  });
-  if (!rr.ok) throw new Error('GitHub could not advance "' + cfg.branch + '" (' + rr.status + '): ' + (await rr.text()).slice(0, 200));
-  return true;
+  const deleteTree = async (headSha) => {
+    const rt = await ghFetch(token, cfg, '/git/trees', {
+      method: 'POST', cache: 'no-store',
+      body: JSON.stringify({ base_tree: headSha, tree: [{ path: filePath, mode: '100644', type: 'blob', sha: null }] })
+    });
+    if (rt.status === 422) return null;                         // path not on this tip — nothing to delete
+    if (!rt.ok) throw new Error('GitHub tree creation failed (' + rt.status + '): ' +
+                                String(await rt.text().catch(() => '')).slice(0, 200));
+    return ghJson(rt);
+  };
+  let lastErr;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const headSha = await getBranchHeadSha(token, cfg);
+      const tree = await deleteTree(headSha);
+      if (!tree) return false;
+      const commit = await createCommit(token, cfg, message, [headSha], tree.sha);
+      const res = await advanceRef(token, cfg, commit.sha);
+      if (res.ok) return true;
+      throw new RefConflictError('fast-forward race');
+    } catch (e) {
+      if (!e.refConflict) throw e;
+      lastErr = e;
+      await new Promise(r => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+  // Persistent race: merge route, same as writes.
+  const headA = await getBranchHeadSha(token, cfg);
+  const tree = await deleteTree(headA);
+  if (!tree) return false;
+  const ours = await createCommit(token, cfg, message, [headA], tree.sha);
+  const remoteTip = await getBranchHeadSha(token, cfg);
+  if (remoteTip === headA) {
+    const first = await advanceRef(token, cfg, ours.sha);
+    if (first.ok) return true;
+    throw new Error('GitHub 422: Update is not a fast forward on "' + cfg.branch + '". Retry shortly.');
+  }
+  const merge = await createCommit(
+    token, cfg, 'Merge latest "' + cfg.branch + '" changes (admin auto-retry)',
+    [ours.sha, remoteTip], tree.sha);
+  const second = await advanceRef(token, cfg, merge.sha);
+  if (second.ok) return true;
+  void lastErr;
+  throw new Error('GitHub 422: Update is not a fast forward — "' + cfg.branch +
+                  '" changed repeatedly during this delete. Nothing was committed; please retry.');
 }
 
 module.exports = {
