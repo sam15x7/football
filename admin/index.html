@@ -226,7 +226,9 @@ let TEMPLATE = null;      // template.html text (fetched from repo)
 let INDEX_HTML = null;    // index.html text
 let CHANNELS = [];        // [{file,name}]
 let CHANNELS_RAW = {};    // full channels.json object (minus owner/repo), preserved on rewrite
-let SHA = {};             // path -> sha per commit batch
+// NOTE: no per-file sha cache anymore — commits go through the Data API, which
+// reads the branch HEAD fresh before every write (see commitFiles). That is
+// what used to cause 'GitHub 422: Invalid request. "sha" wasn't supplied.'
 
 async function loadAll() {
   setStatus($('connStatus'), 'Verifying token & loading repo files…');
@@ -262,9 +264,9 @@ async function loadAll() {
     }
     throw e;
   });
-  TEMPLATE = b64(tpl.content); SHA['template.html'] = tpl.sha;
-  INDEX_HTML = b64(idx.content); SHA['index.html'] = idx.sha;
-  const data = JSON.parse(b64(ch.content)); SHA['channels.json'] = ch.sha;
+  TEMPLATE = b64(tpl.content);
+  INDEX_HTML = b64(idx.content);
+  const data = JSON.parse(b64(ch.content));
   // owner/repo/branch are remembered LOCALLY in this browser (localStorage) —
   // never written back into the public channels.json.
   if (!c.owner && data.owner) { $('owner').value = data.owner; }
@@ -314,40 +316,56 @@ function regenerateIndex() {
   INDEX_HTML = INDEX_HTML.slice(0, bodyStart) + buildIndexLinks() + INDEX_HTML.slice(end);
 }
 
-/* ---------- commit one file (GitHub Contents API PUT — replaces the file) ---------- */
-async function commitFile(filePath, content, message) {
-  // path segments encoded individually so "index.html" stays addressable by GitHub
-  const apiPath = '/contents/' + filePath.split('/').map(encodeURIComponent).join('/');
-  const body = { message, content: b64enc(content), branch: cfg().branch };
-  if (SHA[filePath]) body.sha = SHA[filePath];       // sha captured by loadAll/refreshRepoState
-  const r = await gh(apiPath, { method: 'PUT', body });
-  if (r && r.content && r.content.sha) SHA[filePath] = r.content.sha;
-  return r;
+/* ---------- commit files (GitHub DATA API — atomic, no per-file sha) ----------
+ * Why not PUT /contents/<file>? Updating an existing file there REQUIRES the
+ * file's current blob "sha". If a cached GET never returned one (or the file
+ * changed since), GitHub answers:
+ *     422 Invalid request. "sha" wasn't supplied.
+ * The Data API path below (branch HEAD → blobs → tree → commit → PATCH ref)
+ * only ever sends the parent COMMIT sha, which is read fresh from GitHub right
+ * before each write — so that 422 can no longer occur, and every publish lands
+ * as ONE atomic commit (all-or-nothing).                                          */
+async function ghHeadSha() {
+  const c = cfg();
+  const ref = await gh('/git/ref/heads/' + encodeURIComponent(c.branch));
+  const sha = ref && ref.object && ref.object.sha;
+  if (!sha) throw new Error('GitHub returned no HEAD sha for branch "' + c.branch + '".');
+  return sha;
+}
+
+// files: [{ path, content }] — all entries land in one commit on the branch.
+async function commitFiles(files, message) {
+  const c = cfg();
+  const head = await ghHeadSha();                               // fresh parent sha, every time
+  const tree = [];
+  for (const f of files) {
+    const b = await gh('/git/blobs', { method: 'POST', body: {
+      content: b64enc(f.content), encoding: 'base64' } });
+    if (!b || !b.sha) throw new Error('GitHub returned no sha for blob ' + f.path + '.');
+    tree.push({ path: f.path, mode: '100644', type: 'blob', sha: b.sha });
+  }
+  const t = await gh('/git/trees', { method: 'POST', body: { base_tree: head, tree } });
+  const commit = await gh('/git/commits', { method: 'POST', body: { message, parents: [head], tree: t.sha } });
+  await gh('/git/refs/heads/' + encodeURIComponent(c.branch), {
+    method: 'PATCH', body: { sha: commit.sha, force: false } });
+  return commit;
 }
 
 /* ---------- write helpers with retry & recovery ---------- */
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// PUT a file; on SHA conflict (409) or rate-limit (403/429) re-read the file's
-// current sha from GitHub and retry — up to 4 attempts. Never silently fails.
-async function commitFileSafe(filePath, content, message) {
+// Commit a batch; on rate-limit (403/429) back off and retry, and re-read the
+// branch HEAD before every attempt (a previous attempt may have advanced it).
+// Other errors (401/404/422…) are thrown immediately — no point retrying them.
+async function commitFilesSafe(files, message) {
   let lastErr;
   for (let attempt = 1; attempt <= 4; attempt++) {
-    try { return await commitFile(filePath, content, message); }
+    try { return await commitFiles(files, message); }
     catch (e) {
       lastErr = e;
       const m = e.message || '';
-      if (/GitHub 409/.test(m)) {                       // stale sha → refresh + retry
-        try {
-          const cur = await gh('/contents/' + filePath.split('/').map(encodeURIComponent).join('/') +
-            '?ref=' + encodeURIComponent(cfg().branch));
-          if (cur && cur.sha) SHA[filePath] = cur.sha;
-        } catch (_) {}
-        await sleep(500 * attempt);
-        continue;
-      }
       if (/GitHub (403|429)/.test(m)) { await sleep(1500 * attempt); continue; }
-      throw e;                                          // 401/404/etc — no point retrying
+      throw e;
     }
   }
   throw lastErr;
@@ -355,15 +373,15 @@ async function commitFileSafe(filePath, content, message) {
 
 // Always fetch the LATEST channels.json + index.html before writing, so we
 // never clobber files that changed since unlock (and recover cleanly if the
-// initial load was interrupted).
+// initial load was interrupted). Content only — writes no longer need shas.
 async function refreshRepoState() {
   const c = cfg();
   const [ch, idx] = await Promise.all([
     gh('/contents/channels.json?ref=' + encodeURIComponent(c.branch)),
     gh('/contents/index.html?ref=' + encodeURIComponent(c.branch))
   ]);
-  const data = JSON.parse(b64(ch.content)); SHA['channels.json'] = ch.sha;
-  INDEX_HTML = b64(idx.content);            SHA['index.html'] = idx.sha;
+  const data = JSON.parse(b64(ch.content));
+  INDEX_HTML = b64(idx.content);
   CHANNELS = data.channels || [];
   CHANNELS_RAW = { ...data };
   delete CHANNELS_RAW.owner; delete CHANNELS_RAW.repo;   // coords stay local-only
@@ -393,17 +411,19 @@ async function addChannel() {
   $('addBtn').disabled = true;
   setStatus($('addStatus'), (editing ? 'Updating ' : 'Publishing ') + file + ' …');
   try {
-    await refreshRepoState();                            // fresh shas + latest lists
+    await refreshRepoState();                            // latest channels.json + index.html content
     const page = TEMPLATE.replace(/{{TITLE}}/g, esc(title)).replace(/{{STREAM_URL}}/g, url);
-    // 1) channel page (PUT replaces existing file — same filename = edit)
-    await commitFileSafe(file, page, (editing ? 'Update channel: ' : 'Add channel: ') + name);
-    // 2) channels.json — update entry in place or append (previous naming format kept)
+    // ONE atomic commit: channel page (same filename = edit/overwrite) +
+    // channels.json entry + regenerated index.html. No per-file sha is sent,
+    // so GitHub can no longer answer 422 Invalid request. "sha" wasn't supplied.
     const exists = CHANNELS.find(c => c.file.toLowerCase() === file.toLowerCase());
     if (exists) exists.name = name; else CHANNELS.push({ file, name });
-    await commitFileSafe('channels.json', channelsPayload(), (editing ? 'Re-register channel: ' : 'Register channel: ') + name);
-    // 3) index.html
-    regenerateIndex();
-    await commitFileSafe('index.html', INDEX_HTML, (editing ? 'Update index (edit): ' : 'Update index: ') + name);
+    regenerateIndex();                                   // rewrites INDEX_HTML from the updated CHANNELS
+    await commitFilesSafe([
+      { path: file, content: page },
+      { path: 'channels.json', content: channelsPayload() },
+      { path: 'index.html', content: INDEX_HTML }
+    ], (editing ? 'Update channel: ' : 'Add channel: ') + name);
 
     setStatus($('addStatus'), (editing ? '✔ Updated "' : '✔ Added "') + name + '" — GitHub Pages redeploys in ~30–60 s.', 'ok');
     $('chName').value = ''; $('chUrl').value = ''; $('chFile').value = ''; $('chTitle').value = '';
@@ -443,9 +463,12 @@ async function removeChannel(c) {
   try {
     await refreshRepoState();
     CHANNELS = CHANNELS.filter(x => x.file !== c.file);
-    await commitFileSafe('channels.json', channelsPayload(), 'Remove channel: ' + c.name);
     regenerateIndex();
-    await commitFileSafe('index.html', INDEX_HTML, 'Update index: removed ' + c.name);
+    // One atomic commit: unregistered channels.json + regenerated index.html.
+    await commitFilesSafe([
+      { path: 'channels.json', content: channelsPayload() },
+      { path: 'index.html', content: INDEX_HTML }
+    ], 'Remove channel: ' + c.name);
     renderList(); $('count').textContent = CHANNELS.length + ' channels';
     setStatus($('listStatus'), '✔ Removed ' + c.name, 'ok');
   } catch (e) { setStatus($('listStatus'), '✗ ' + e.message, 'err'); }
