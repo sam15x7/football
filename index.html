@@ -49,6 +49,21 @@
 
   .empty { max-width: 1100px; margin: 32px auto 0; text-align: center; color: var(--muted); }
 
+
+  .filters { max-width: 1100px; margin: 0 auto 18px; display: flex; flex-direction: column; gap: 8px; }
+  .filter-group { display: flex; flex-wrap: wrap; gap: 6px; }
+  .filter-group:empty { display: none; }
+  .chip {
+    font: 500 12.5px Barlow, sans-serif; letter-spacing: .03em; text-transform: capitalize;
+    padding: 5px 12px; border-radius: 99px; cursor: pointer;
+    background: var(--panel); color: var(--muted); border: 1px solid var(--line);
+  }
+  .chip:hover { color: var(--text); border-color: var(--gold); }
+  .chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .chip.active { background: var(--gold); color: #09080a; border-color: var(--gold); }
+  .chip.clear { border-style: dashed; }
+  nav.grid .card { display: block; }
+  nav.grid .card a { height: 100%; }
   .head-tools { display: flex; align-items: center; gap: 14px; }
 </style>
 </head>
@@ -69,78 +84,129 @@
   <input id="q" type="search" placeholder="Search channels…" autocomplete="off">
 </div>
 
+<div class="filters" id="filters" aria-label="Filter by category">
+  <div class="filter-group" id="sportChips" role="group" aria-label="Filter by sport"></div>
+  <div class="filter-group" id="regionChips" role="group" aria-label="Filter by region"></div>
+</div>
+
 <nav class="grid" id="channels" aria-label="Channel list">
-  <a href="abudhabisports1uae.html">Abu Dhabi Sports 1 UAE</a>
-  <a href="appletv.html">Apple TV</a>
-  <a href="astrosupersport2.html">Astro SuperSport 2</a>
-  <a href="beinsportsmena1.html">beIN Sports MENA 1</a>
-  <a href="beinsportsmena2(eng).html">beIN Sports MENA 2 (English)</a>
-  <a href="beinsportsmena3.html">beIN Sports MENA 3</a>
-  <a href="beinsportsusa.html">beIN Sports USA</a>
-  <a href="daznlaliga.html">Dazn LaLiga</a>
-  <a href="elevensports3poland.html">Eleven Sports 3 Poland</a>
-  <a href="espn2usa.html">ESPN 2 USA</a>
-  <a href="espnu.html">ESPN U</a>
-  <a href="espnusa.html">ESPN USA</a>
-  <a href="foxdeportes.html">Fox Deportes</a>
-  <a href="foxsoccerplus.html">Fox Soccer Plus</a>
-  <a href="foxsports1usa.html">Fox Sports 1 (USA)</a>
-  <a href="foxsports2usa.html">Fox Sports 2 (USA)</a>
-  <a href="itv1uk.html">ITV 1 (UK)</a>
-  <a href="itv2uk.html">ITV 2 (UK)</a>
-  <a href="itv3uk.html">ITV 3 (UK)</a>
-  <a href="laligatvuk.html">LaLiga TV UK</a>
-  <a href="ligue13france.html">Ligue1+ 3 France</a>
-  <a href="maxsport1bulgaria.html">Max Sport 1 Bulgaria</a>
-  <a href="movistarligadecampeones.html">Movistar Liga De Campeones</a>
-  <a href="novasport3sk.html">Nova Sport 3 SK</a>
-  <a href="novasportsstart.html">Nova Sports Start</a>
-  <a href="premiersportsireland2.html">Premier Sports Ireland 2</a>
-  <a href="skysportcalcioitaly.html">Sky Sport Calcio (Italy)</a>
-  <a href="skysportsf1uk.html">Sky Sports F1 UK</a>
-  <a href="sonyten1.html">Sony TEN 1</a>
-  <a href="sonyten2.html">Sony TEN 2</a>
-  <a href="sport5israel.html">Sport 5 (Israel)</a>
-  <a href="sport5plusisrael.html">Sport 5 Plus Israel</a>
-  <a href="sporttv1.html">Sport TV 1</a>
-  <a href="sporttv2.html">Sport TV 2</a>
-  <a href="sporttv3.html">Sport TV 3</a>
-  <a href="sporttv4.html">Sport TV 4</a>
-  <a href="sporttv5.html">Sport TV 5</a>
-  <a href="sporttv6.html">Sport TV 6</a>
-  <a href="sportvbrasil.html">SporTV (Brazil)</a>
-  <a href="supersportpremierleague.html">Super Sport Premier League</a>
-  <a href="supersportlaliga.html">SuperSport LaLiga</a>
-  <a href="telefeargentina.html">Telefe Argentina</a>
-  <a href="tf1france.html">TF1 (France)</a>
-  <a href="tv3sportdenmark.html">TV 3 Sport Denmark</a>
-  <a href="tycsportsargentina.html">TyC Sports (Argentina)</a>
-  <a href="viaplaysports2uk.html">Viaplay Sports 2 (UK)</a>
-  <a href="ZDFDE.html">ZDF (Germany)</a>
-  <a href="ziggosportnl.html">Ziggo Sport (NL)</a>
+  <div class="card" data-region="uae"><a href="abudhabisports1uae.html" data-region="uae">Abu Dhabi Sports 1 UAE</a></div>
+  <div class="card" data-sport="mls,football"><a href="appletv.html" data-sport="mls,football">Apple TV</a></div>
+  <div class="card" data-sport="football,badminton"><a href="astrosupersport2.html" data-sport="football,badminton">Astro SuperSport 2</a></div>
+  <div class="card" data-sport="football" data-region="mena"><a href="beinsportsmena1.html" data-sport="football" data-region="mena">beIN Sports MENA 1</a></div>
+  <div class="card" data-sport="football" data-region="mena"><a href="beinsportsmena2(eng).html" data-sport="football" data-region="mena">beIN Sports MENA 2 (English)</a></div>
+  <div class="card" data-sport="football" data-region="mena"><a href="beinsportsmena3.html" data-sport="football" data-region="mena">beIN Sports MENA 3</a></div>
+  <div class="card" data-sport="football,mma" data-region="usa"><a href="beinsportsusa.html" data-sport="football,mma" data-region="usa">beIN Sports USA</a></div>
+  <div class="card" data-sport="football" data-region="netherlands"><a href="daznlaliga.html" data-sport="football" data-region="netherlands">Dazn LaLiga</a></div>
+  <div class="card" data-sport="football" data-region="poland"><a href="elevensports3poland.html" data-sport="football" data-region="poland">Eleven Sports 3 Poland</a></div>
+  <div class="card" data-sport="football,basketball,mlb" data-region="usa"><a href="espn2usa.html" data-sport="football,basketball,mlb" data-region="usa">ESPN 2 USA</a></div>
+  <div class="card" data-sport="college football,basketball"><a href="espnu.html" data-sport="college football,basketball">ESPN U</a></div>
+  <div class="card" data-sport="football,basketball,ufc" data-region="usa"><a href="espnusa.html" data-sport="football,basketball,ufc" data-region="usa">ESPN USA</a></div>
+  <div class="card" data-sport="football,boxing"><a href="foxdeportes.html" data-sport="football,boxing">Fox Deportes</a></div>
+  <div class="card" data-sport="football"><a href="foxsoccerplus.html" data-sport="football">Fox Soccer Plus</a></div>
+  <div class="card" data-sport="nfl,college football,mma" data-region="usa"><a href="foxsports1usa.html" data-sport="nfl,college football,mma" data-region="usa">Fox Sports 1 (USA)</a></div>
+  <div class="card" data-sport="nascar,football,field hockey" data-region="usa"><a href="foxsports2usa.html" data-sport="nascar,football,field hockey" data-region="usa">Fox Sports 2 (USA)</a></div>
+  <div class="card" data-sport="football,horse racing" data-region="uk"><a href="itv1uk.html" data-sport="football,horse racing" data-region="uk">ITV 1 (UK)</a></div>
+  <div class="card" data-sport="tennis,rugby" data-region="uk"><a href="itv2uk.html" data-sport="tennis,rugby" data-region="uk">ITV 2 (UK)</a></div>
+  <div class="card" data-sport="football,horse racing" data-region="uk"><a href="itv3uk.html" data-sport="football,horse racing" data-region="uk">ITV 3 (UK)</a></div>
+  <div class="card" data-sport="football" data-region="uk"><a href="laligatvuk.html" data-sport="football" data-region="uk">LaLiga TV UK</a></div>
+  <div class="card" data-sport="football,rugby" data-region="france"><a href="ligue13france.html" data-sport="football,rugby" data-region="france">Ligue1+ 3 France</a></div>
+  <div class="card" data-sport="football,volleyball" data-region="bulgaria"><a href="maxsport1bulgaria.html" data-sport="football,volleyball" data-region="bulgaria">Max Sport 1 Bulgaria</a></div>
+  <div class="card" data-sport="football"><a href="movistarligadecampeones.html" data-sport="football">Movistar Liga De Campeones</a></div>
+  <div class="card" data-sport="football,hockey" data-region="slovakia"><a href="novasport3sk.html" data-sport="football,hockey" data-region="slovakia">Nova Sport 3 SK</a></div>
+  <div class="card" data-sport="football,basketball"><a href="novasportsstart.html" data-sport="football,basketball">Nova Sports Start</a></div>
+  <div class="card" data-sport="gaelic games,horse racing" data-region="ireland"><a href="premiersportsireland2.html" data-sport="gaelic games,horse racing" data-region="ireland">Premier Sports Ireland 2</a></div>
+  <div class="card" data-sport="football" data-region="italy"><a href="skysportcalcioitaly.html" data-sport="football" data-region="italy">Sky Sport Calcio (Italy)</a></div>
+  <div class="card" data-sport="motorsport,f1" data-region="uk"><a href="skysportsf1uk.html" data-sport="motorsport,f1" data-region="uk">Sky Sports F1 UK</a></div>
+  <div class="card" data-sport="cricket,tennis"><a href="sonyten1.html" data-sport="cricket,tennis">Sony TEN 1</a></div>
+  <div class="card" data-sport="tennis,badminton,football"><a href="sonyten2.html" data-sport="tennis,badminton,football">Sony TEN 2</a></div>
+  <div class="card" data-sport="football,basketball,tennis" data-region="israel"><a href="sport5israel.html" data-sport="football,basketball,tennis" data-region="israel">Sport 5 (Israel)</a></div>
+  <div class="card" data-sport="football,basketball,tennis" data-region="israel"><a href="sport5plusisrael.html" data-sport="football,basketball,tennis" data-region="israel">Sport 5 Plus Israel</a></div>
+  <div class="card" data-sport="football"><a href="sporttv1.html" data-sport="football">Sport TV 1</a></div>
+  <div class="card" data-sport="football"><a href="sporttv2.html" data-sport="football">Sport TV 2</a></div>
+  <div class="card" data-sport="football,motorsport"><a href="sporttv3.html" data-sport="football,motorsport">Sport TV 3</a></div>
+  <div class="card" data-sport="football,cycling"><a href="sporttv4.html" data-sport="football,cycling">Sport TV 4</a></div>
+  <div class="card" data-sport="football,basketball"><a href="sporttv5.html" data-sport="football,basketball">Sport TV 5</a></div>
+  <div class="card" data-sport="football,combat sports"><a href="sporttv6.html" data-sport="football,combat sports">Sport TV 6</a></div>
+  <div class="card" data-sport="football,volleyball" data-region="brazil"><a href="sportvbrasil.html" data-sport="football,volleyball" data-region="brazil">SporTV (Brazil)</a></div>
+  <div class="card" data-sport="football"><a href="supersportpremierleague.html" data-sport="football">Super Sport Premier League</a></div>
+  <div class="card" data-sport="football"><a href="supersportlaliga.html" data-sport="football">SuperSport LaLiga</a></div>
+  <div class="card" data-sport="football,boxing" data-region="argentina"><a href="telefeargentina.html" data-sport="football,boxing" data-region="argentina">Telefe Argentina</a></div>
+  <div class="card" data-sport="football" data-region="france"><a href="tf1france.html" data-sport="football" data-region="france">TF1 (France)</a></div>
+  <div class="card" data-sport="football,handball" data-region="denmark"><a href="tv3sportdenmark.html" data-sport="football,handball" data-region="denmark">TV 3 Sport Denmark</a></div>
+  <div class="card" data-sport="football,basketball" data-region="argentina"><a href="tycsportsargentina.html" data-sport="football,basketball" data-region="argentina">TyC Sports (Argentina)</a></div>
+  <div class="card" data-sport="football,darts" data-region="uk"><a href="viaplaysports2uk.html" data-sport="football,darts" data-region="uk">Viaplay Sports 2 (UK)</a></div>
+  <div class="card" data-sport="football" data-region="germany"><a href="ZDFDE.html" data-sport="football" data-region="germany">ZDF (Germany)</a></div>
+  <div class="card" data-sport="football" data-region="netherlands"><a href="ziggosportnl.html" data-sport="football" data-region="netherlands">Ziggo Sport (NL)</a></div>
 </nav>
 
 <p class="empty" id="empty" hidden>No channels match your search.</p>
 
 <script>
-  const links = Array.from(document.querySelectorAll("#channels a"));
+  // GENERATED contract: the grid and channels.json stay in sync via the backend
+  // (admin/add-channel.js, admin/sync-index.js, admin dashboard). Cards carry
+  // data-sport / data-region / data-tags written from channels.json metadata.
+  const grid = document.getElementById("channels");
+  const links = Array.from(grid.querySelectorAll("a"));
+  const cardOf = a => a.closest(".card") || a;
   const countEl = document.getElementById("count");
   const emptyEl = document.getElementById("empty");
   const queryEl = document.getElementById("q");
 
-  function applyFilter() {
+  const list = sel => [...new Set(links.flatMap(a => (a.getAttribute(sel) || "").split(",").map(t => t.trim()).filter(Boolean)))];
+  const sports = list("data-sport").sort();
+  const regions = list("data-region").sort();
+
+  const active = { sport: null, region: null };
+
+  function buildChips(containerId, values, kind) {
+    const box = document.getElementById(containerId);
+    for (const v of values) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "chip"; b.textContent = v; b.dataset.value = v;
+      b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", () => {
+        active[kind] = active[kind] === v ? null : v;
+        refreshChips(); applyFilter();
+      });
+      box.appendChild(b);
+    }
+  }
+  function refreshChips() {
+    for (const [kind, boxId] of [["sport", "sportChips"], ["region", "regionChips"]]) {
+      for (const b of document.getElementById(boxId).children) {
+        const on = active[kind] === b.dataset.value;
+        b.classList.toggle("active", on);
+        b.setAttribute("aria-pressed", String(on));
+      }
+    }
+  }
+
+  function matches(a) {
+    if (active.sport && !(a.getAttribute("data-sport") || "").split(",").map(s => s.trim()).includes(active.sport)) return false;
+    if (active.region && (a.getAttribute("data-region") || "") !== active.region) return false;
     const q = queryEl.value.trim().toLowerCase();
+    if (!q) return true;
+    const hay = (a.textContent + " " + a.getAttribute("href") + " " +
+                 (a.getAttribute("data-sport") || "") + " " + (a.getAttribute("data-region") || "") + " " +
+                 (a.getAttribute("data-tags") || "")).toLowerCase();
+    return q.split(/\s+/).every(term => hay.includes(term));
+  }
+
+  function applyFilter() {
     let visible = 0;
     for (const a of links) {
-      const hay = (a.textContent + " " + a.getAttribute("href")).toLowerCase();
-      const match = !q || hay.includes(q);
-      a.classList.toggle("hidden", !match);
-      if (match) visible++;
+      const ok = matches(a);
+      cardOf(a).classList.toggle("hidden", !ok);
+      if (ok) visible++;
     }
-    countEl.textContent = q ? visible + " of " + links.length + " channels" : links.length + " channels";
+    const filtered = active.sport || active.region || queryEl.value.trim();
+    countEl.textContent = filtered ? visible + " of " + links.length + " channels" : links.length + " channels";
     emptyEl.hidden = visible !== 0;
   }
 
+  buildChips("sportChips", sports, "sport");
+  buildChips("regionChips", regions, "region");
   queryEl.addEventListener("input", applyFilter);
   applyFilter();
 

@@ -226,18 +226,108 @@ function buildPage(title, streamUrl) {
 }
 
 /* ------------------------- index.html rendering rules -----------------------
- * The channel STRUCTURE is untouched: same <nav class="grid" id="channels">
- * container, same plain <a href="file.html">Name</a> entries, same search /
- * filter script. Only the source of truth changes: the list now lives in
- * channels.json and index.html is regenerated from it.
+ * Redesigned public index: one <nav class="grid" id="channels"> container,
+ * but every card is now a <div class="card" data-sport data-region data-tags>
+ * wrapping an <a>. The tags/classification attributes are GENERATED from
+ * channels.json by these functions — never hand-edit the grid.
+ *
+ * Classification model (per channel entry in channels.json):
+ *   sport  : string[]  canonical sport tags        (["football"], ["tennis","mma"])
+ *   region : string    optional country/region     ("UK", "MENA", ...)
+ *   tags   : string[]  free-form extras            (["premier league","hd"])
+ * Everything stays OPTIONAL and backward compatible: entries without any of
+ * them still render as plain cards; only present metadata becomes data-* attrs.
  * -------------------------------------------------------------------------- */
 
+const SPORT_ALIASES = {
+  'soccer': 'football', 'association football': 'football',
+  'basket': 'basketball', 'basket ball': 'basketball',
+  'ice hockey': 'hockey',
+  'auto racing': 'motorsport', 'motor racing': 'motorsport', 'racing': 'motorsport',
+  'formula 1': 'f1', 'formula-one': 'f1',
+  'american football': 'nfl', 'nfl football': 'nfl',
+  'mixed martial arts': 'mma',
+  'olympic sports': 'olympics',
+  'sports': '', 'sport': ''              // generic words are not classifications
+};
+
+// "F1", "Formula-1", " formula 1 " -> "f1"; unknown terms pass through lowercased.
+function normTag(raw) {
+  const s0 = String(raw == null ? '' : raw).trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!s0) return '';
+  return SPORT_ALIASES.hasOwnProperty(s0) ? SPORT_ALIASES[s0] : s0;
+}
+
+function tagList(v) {
+  const arr = Array.isArray(v) ? v : (v == null || v === '' ? [] : String(v).split(/[,;]/));
+  const out = [];
+  for (const t of arr) {
+    const n = normTag(t);
+    if (n && !out.includes(n)) out.push(n);
+  }
+  return out;
+}
+
+// Return the classification fields of a channel entry (normalized, or absent).
+function classifyChannel(c) {
+  const out = {};
+  const sports = tagList(c.sport !== undefined ? c.sport : c.sports);
+  if (sports.length) out.sport = sports;
+  const region = String(c.region || '').trim();
+  if (region) out.region = region;
+  const tags = tagList(c.tags);
+  if (tags.length) out.tags = tags;
+  return out;
+}
+
+// Normalize classification fields on every entry (used before writing channels.json).
+function setTags(channels) {
+  return channels.map(c => {
+    const cls = classifyChannel(c);
+    const next = Object.assign({}, c);
+    if (cls.sport) next.sport = cls.sport; else delete next.sport;
+    if (cls.region) next.region = cls.region; else delete next.region;
+    if (cls.tags) next.tags = cls.tags; else delete next.tags;
+    return next;
+  });
+}
+
+// Union of every sport tag in use — powers the dashboard's tag suggestions.
+function allSports(channels) {
+  const seen = [];
+  for (const c of channels) {
+    for (const s of tagList(c.sport !== undefined ? c.sport : c.sports)) {
+      if (!seen.includes(s)) seen.push(s);
+    }
+  }
+  return seen.sort();
+}
+
+// One card per channel: plain <a> when unclassified, otherwise a wrapper
+// <div class="card" data-region data-sport> carrying the classification and
+// an inner <a> whose data-* attributes hold the FULL machine-readable tags
+// (the public page's filter script reads name/href/data-tags from each <a>).
 function renderIndexLinks(channels) {
   const key = c => String(c.name).toLowerCase();
   return channels
     .slice()
     .sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0))
-    .map(c => '  <a href="' + hrefFor(c.file) + '">' + escapeHtml(c.name) + '</a>')
+    .map(c => {
+      const cls = classifyChannel(c);
+      const attrs = [];
+      if (cls.sport) attrs.push('data-sport="' + escapeHtml(cls.sport.join(',')) + '"');
+      if (cls.region) attrs.push('data-region="' + escapeHtml(cls.region.toLowerCase()) + '"');
+      if (cls.tags) attrs.push('data-tags="' + escapeHtml(cls.tags.join(',')) + '"');
+      const a = '<a href="' + hrefFor(c.file) + '"' + (attrs.length ? ' ' + attrs.join(' ') : '') +
+                '>' + escapeHtml(c.name) + '</a>';
+      if (cls.sport || cls.region || cls.tags) {
+        const wrap = [];
+        if (cls.sport) wrap.push('data-sport="' + escapeHtml(cls.sport.join(',')) + '"');
+        if (cls.region) wrap.push('data-region="' + escapeHtml(cls.region.toLowerCase()) + '"');
+        return '  <div class="card"' + (wrap.length ? ' ' + wrap.join(' ') : '') + '>' + a + '</div>';
+      }
+      return '  ' + a;
+    })
     .join('\n');
 }
 
@@ -263,9 +353,19 @@ function regenerateIndexString(indexHtml, channels) {
   return indexHtml.slice(0, bodyStart) + '\n' + renderIndexLinks(channels) + '\n' + indexHtml.slice(navEnd);
 }
 
-function upsertChannelEntry(channels, file, name) {
+// Upsert a channel entry. `meta` optionally carries { sport, region, tags } —
+// classification fields are normalized via setTags-style rules; passing no meta
+// (or an unclassified edit) PRESERVES the existing tags of that channel.
+function upsertChannelEntry(channels, file, name, meta) {
+  const prev = channels.find(c => c.file === file) || {};
+  const entry = Object.assign({}, prev, { file, name });
+  if (meta && (meta.sport !== undefined || meta.region !== undefined || meta.tags !== undefined)) {
+    if (meta.sport !== undefined) entry.sport = meta.sport;
+    if (meta.region !== undefined) entry.region = meta.region;
+    if (meta.tags !== undefined) entry.tags = meta.tags;
+  }
   const next = channels.filter(c => c.file !== file);
-  next.push({ file, name });
+  next.push(setTags([entry])[0]);
   return next;
 }
 
@@ -541,6 +641,7 @@ module.exports = {
   readChannelsJson, writeChannelsJson, getRepoConfig,
   loadTemplate, buildPage,
   renderIndexLinks, regenerateIndexLocal, regenerateIndexString,
+  normTag, tagList, classifyChannel, setTags, allSports,
   upsertChannelEntry, removeChannelEntry,
   encodePath, getBranchHeadSha, fetchRemoteFile, commitFile, commitFiles, deleteFile
 };
