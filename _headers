@@ -1,0 +1,6 @@
+# Netlify / Cloudflare Pages style headers file.
+# Explicitly permit OTHER sites to embed this site's pages in an <iframe>.
+# (HTML meta tags cannot set X-Frame-Options or CSP — only HTTP headers can.)
+/*
+  X-Frame-Options: ALLOWALL
+  Content-Security-Policy: frame-ancestors *
