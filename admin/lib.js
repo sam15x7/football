@@ -226,18 +226,108 @@ function buildPage(title, streamUrl) {
 }
 
 /* ------------------------- index.html rendering rules -----------------------
- * The channel STRUCTURE is untouched: same <nav class="grid" id="channels">
- * container, same plain <a href="file.html">Name</a> entries, same search /
- * filter script. Only the source of truth changes: the list now lives in
- * channels.json and index.html is regenerated from it.
+ * Redesigned public index: one <nav class="grid" id="channels"> container,
+ * but every card is now a <div class="card" data-sport data-region data-tags>
+ * wrapping an <a>. The tags/classification attributes are GENERATED from
+ * channels.json by these functions — never hand-edit the grid.
+ *
+ * Classification model (per channel entry in channels.json):
+ *   sport  : string[]  canonical sport tags        (["football"], ["tennis","mma"])
+ *   region : string    optional country/region     ("UK", "MENA", ...)
+ *   tags   : string[]  free-form extras            (["premier league","hd"])
+ * Everything stays OPTIONAL and backward compatible: entries without any of
+ * them still render as plain cards; only present metadata becomes data-* attrs.
  * -------------------------------------------------------------------------- */
 
+const SPORT_ALIASES = {
+  'soccer': 'football', 'association football': 'football',
+  'basket': 'basketball', 'basket ball': 'basketball',
+  'ice hockey': 'hockey',
+  'auto racing': 'motorsport', 'motor racing': 'motorsport', 'racing': 'motorsport',
+  'formula 1': 'f1', 'formula-one': 'f1',
+  'american football': 'nfl', 'nfl football': 'nfl',
+  'mixed martial arts': 'mma',
+  'olympic sports': 'olympics',
+  'sports': '', 'sport': ''              // generic words are not classifications
+};
+
+// "F1", "Formula-1", " formula 1 " -> "f1"; unknown terms pass through lowercased.
+function normTag(raw) {
+  const s0 = String(raw == null ? '' : raw).trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!s0) return '';
+  return SPORT_ALIASES.hasOwnProperty(s0) ? SPORT_ALIASES[s0] : s0;
+}
+
+function tagList(v) {
+  const arr = Array.isArray(v) ? v : (v == null || v === '' ? [] : String(v).split(/[,;]/));
+  const out = [];
+  for (const t of arr) {
+    const n = normTag(t);
+    if (n && !out.includes(n)) out.push(n);
+  }
+  return out;
+}
+
+// Return the classification fields of a channel entry (normalized, or absent).
+function classifyChannel(c) {
+  const out = {};
+  const sports = tagList(c.sport !== undefined ? c.sport : c.sports);
+  if (sports.length) out.sport = sports;
+  const region = String(c.region || '').trim();
+  if (region) out.region = region;
+  const tags = tagList(c.tags);
+  if (tags.length) out.tags = tags;
+  return out;
+}
+
+// Normalize classification fields on every entry (used before writing channels.json).
+function setTags(channels) {
+  return channels.map(c => {
+    const cls = classifyChannel(c);
+    const next = Object.assign({}, c);
+    if (cls.sport) next.sport = cls.sport; else delete next.sport;
+    if (cls.region) next.region = cls.region; else delete next.region;
+    if (cls.tags) next.tags = cls.tags; else delete next.tags;
+    return next;
+  });
+}
+
+// Union of every sport tag in use — powers the dashboard's tag suggestions.
+function allSports(channels) {
+  const seen = [];
+  for (const c of channels) {
+    for (const s of tagList(c.sport !== undefined ? c.sport : c.sports)) {
+      if (!seen.includes(s)) seen.push(s);
+    }
+  }
+  return seen.sort();
+}
+
+// One card per channel: plain <a> when unclassified, otherwise a wrapper
+// <div class="card" data-region data-sport> carrying the classification and
+// an inner <a> whose data-* attributes hold the FULL machine-readable tags
+// (the public page's filter script reads name/href/data-tags from each <a>).
 function renderIndexLinks(channels) {
   const key = c => String(c.name).toLowerCase();
   return channels
     .slice()
     .sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0))
-    .map(c => '  <a href="' + hrefFor(c.file) + '">' + escapeHtml(c.name) + '</a>')
+    .map(c => {
+      const cls = classifyChannel(c);
+      const attrs = [];
+      if (cls.sport) attrs.push('data-sport="' + escapeHtml(cls.sport.join(',')) + '"');
+      if (cls.region) attrs.push('data-region="' + escapeHtml(cls.region.toLowerCase()) + '"');
+      if (cls.tags) attrs.push('data-tags="' + escapeHtml(cls.tags.join(',')) + '"');
+      const a = '<a href="' + hrefFor(c.file) + '"' + (attrs.length ? ' ' + attrs.join(' ') : '') +
+                '>' + escapeHtml(c.name) + '</a>';
+      if (cls.sport || cls.region || cls.tags) {
+        const wrap = [];
+        if (cls.sport) wrap.push('data-sport="' + escapeHtml(cls.sport.join(',')) + '"');
+        if (cls.region) wrap.push('data-region="' + escapeHtml(cls.region.toLowerCase()) + '"');
+        return '  <div class="card"' + (wrap.length ? ' ' + wrap.join(' ') : '') + '>' + a + '</div>';
+      }
+      return '  ' + a;
+    })
     .join('\n');
 }
 
@@ -263,9 +353,19 @@ function regenerateIndexString(indexHtml, channels) {
   return indexHtml.slice(0, bodyStart) + '\n' + renderIndexLinks(channels) + '\n' + indexHtml.slice(navEnd);
 }
 
-function upsertChannelEntry(channels, file, name) {
+// Upsert a channel entry. `meta` optionally carries { sport, region, tags } —
+// classification fields are normalized via setTags-style rules; passing no meta
+// (or an unclassified edit) PRESERVES the existing tags of that channel.
+function upsertChannelEntry(channels, file, name, meta) {
+  const prev = channels.find(c => c.file === file) || {};
+  const entry = Object.assign({}, prev, { file, name });
+  if (meta && (meta.sport !== undefined || meta.region !== undefined || meta.tags !== undefined)) {
+    if (meta.sport !== undefined) entry.sport = meta.sport;
+    if (meta.region !== undefined) entry.region = meta.region;
+    if (meta.tags !== undefined) entry.tags = meta.tags;
+  }
   const next = channels.filter(c => c.file !== file);
-  next.push({ file, name });
+  next.push(setTags([entry])[0]);
   return next;
 }
 
@@ -290,32 +390,247 @@ async function ghFetch(token, cfg, p, init) {
   return fetch(url, Object.assign({}, init, { headers: ghHeaders(token) }));
 }
 
+// URL-encode each path segment individually — encodeURIComponent on the WHOLE
+// path would turn "a/b.html" into "a%2Fb.html", which GitHub's Contents API
+// does not resolve as a nested path.
+function encodePath(p) {
+  return String(p).split('/').map(encodeURIComponent).join('/');
+}
+
+// Read a file's CURRENT sha from GitHub with cache-busting (?ref=<branch>, no
+// If-None-Match). A stale/304-cached response without a sha is treated as a
+// miss so callers never send an undefined "sha".
 async function fetchRemoteFile(token, cfg, filePath) {
   const r = await ghFetch(token, cfg,
-    '/contents/' + encodeURIComponent(filePath) + '?ref=' + encodeURIComponent(cfg.branch),
-    { method: 'GET' });
+    '/contents/' + encodePath(filePath) + '?ref=' + encodeURIComponent(cfg.branch),
+    { method: 'GET', cache: 'no-store' });
   if (r.status === 404) return { exists: false, sha: null, content: null };
   if (!r.ok) throw new Error('GitHub read failed (' + r.status + ') for ' + filePath + '. Check owner/repo/token.');
   const j = await r.json();
+  // Directories/symlinks come back as arrays — never usable as a file sha.
+  const sha = (!Array.isArray(j) && typeof j.sha === 'string' && j.sha) || null;
   return {
-    exists: true,
-    sha: j.sha,
-    content: j.content ? Buffer.from(j.content.replace(/\n/g, ''), 'base64').toString('utf8') : ''
+    exists: !!sha,
+    sha,
+    content: j.content ? Buffer.from(String(j.content).replace(/\n/g, ''), 'base64').toString('utf8') : ''
   };
 }
 
+/* ------------------------- atomic multi-file commits ------------------------
+ * The Data API (git/refs + git/trees + git/commits + PATCH ref) writes several
+ * files in ONE commit and NEVER requires a per-file blob sha — only the parent
+ * commit's sha. This sidesteps the classic GitHub Contents-API failure:
+ *   422 Invalid request. "sha" wasn't supplied.
+ * which happens whenever the cached sha of a file goes missing/stale (e.g. a
+ * browser-cached GET, or the file changed between reading and writing).
+ * --------------------------------------------------------------------------- */
+
+async function getBranchHeadSha(token, cfg) {
+  const r = await ghFetch(token, cfg, '/git/ref/heads/' + encodeURIComponent(cfg.branch),
+                          { method: 'GET', cache: 'no-store' });
+  if (!r.ok) throw new Error('GitHub could not read branch "' + cfg.branch + '" (' + r.status +
+                             '). Check owner/repo/token and that the branch exists.');
+  const j = await r.json();
+  const sha = j && j.object && j.object.sha;
+  if (!sha) throw new Error('GitHub returned no HEAD sha for branch "' + cfg.branch + '".');
+  return sha;
+}
+
+/* ---------------- ref races: "Update is not a fast forward" -----------------
+ * PATCH /git/refs only advances the branch if the new commit's parent IS the
+ * current branch tip. If another push (a second admin tab, the CLI, or a
+ * manual git push) lands between our HEAD read and the PATCH, GitHub answers:
+ *   422 Update is not a fast forward
+ * Fix: optimistic concurrency control — on conflict, re-read the fresh HEAD,
+ * rebuild tree+commit on top of it, and retry (up to 3 attempts). If the race
+ * keeps losing, fall back to creating a MERGE commit whose parents are
+ * [ourCommit, remoteTip]: that commit is by construction a descendant of the
+ * remote tip, so advancing the ref to it IS a fast-forward again.
+ * --------------------------------------------------------------------------- */
+
+class RefConflictError extends Error {
+  constructor(message) { super(message); this.name = 'RefConflictError'; this.refConflict = true; }
+}
+
+function isRefConflict(status, text) {
+  return status === 422 && /not a fast[- ]?forward/i.test(text || '');
+}
+
+async function ghJson(r) {
+  try { return await r.json(); } catch (_) { return {}; }
+}
+
+// Build blobs + tree for `entries` on top of headSha. Returns the tree object.
+async function buildTree(token, cfg, headSha, entries) {
+  const blobs = await Promise.all(entries.map(async f => {
+    const r = await ghFetch(token, cfg, '/git/blobs', {
+      method: 'POST', cache: 'no-store',
+      body: JSON.stringify({ content: Buffer.from(f.content, 'utf8').toString('base64'), encoding: 'base64' })
+    });
+    if (!r.ok) throw new Error('GitHub blob upload failed (' + r.status + ') for ' + f.path + ': ' +
+                               String(await r.text().catch(() => '')).slice(0, 200));
+    const j = await ghJson(r);
+    if (!j.sha) throw new Error('GitHub returned no sha for blob ' + f.path + '.');
+    return { path: f.path, mode: '100644', type: 'blob', sha: j.sha };
+  }));
+  const rt = await ghFetch(token, cfg, '/git/trees', {
+    method: 'POST', cache: 'no-store',
+    body: JSON.stringify({ base_tree: headSha, tree: blobs })
+  });
+  if (!rt.ok) throw new Error('GitHub tree creation failed (' + rt.status + '): ' +
+                              String(await rt.text().catch(() => '')).slice(0, 200));
+  return ghJson(rt);
+}
+
+async function createCommit(token, cfg, message, parents, treeSha) {
+  const rc = await ghFetch(token, cfg, '/git/commits', {
+    method: 'POST', cache: 'no-store',
+    body: JSON.stringify({ message, parents, tree: treeSha })
+  });
+  if (!rc.ok) throw new Error('GitHub commit creation failed (' + rc.status + '): ' +
+                              String(await rc.text().catch(() => '')).slice(0, 200));
+  return ghJson(rc);
+}
+
+// Advance the branch ref WITHOUT force. Returns:
+//   { ok: true, commit } | { conflict: true } | throws on other errors.
+async function advanceRef(token, cfg, commitSha) {
+  const rr = await ghFetch(token, cfg, '/git/refs/heads/' + encodeURIComponent(cfg.branch), {
+    method: 'PATCH', cache: 'no-store',
+    body: JSON.stringify({ sha: commitSha, force: false })
+  });
+  if (rr.ok) return { ok: true };
+  const text = String(await rr.text().catch(() => ''));
+  // 422 "Update is not a fast forward" / stale-info → recoverable race.
+  if (isRefConflict(rr.status, text)) return { conflict: true };
+  // A commit identical to the current tip: nothing to do, treat as success.
+  if (rr.status === 304 || /not modified/i.test(text)) return { ok: true };
+  throw new Error('GitHub could not advance "' + cfg.branch + '" (' + rr.status + '): ' + text.slice(0, 200));
+}
+
+// One full attempt: fresh HEAD → tree → commit → non-forced PATCH ref.
+// Throws RefConflictError when the branch moved under us mid-flight.
+async function tryCommitOnce(token, cfg, entries, message, prebuiltTree) {
+  const headSha = await getBranchHeadSha(token, cfg);           // fresh every attempt
+  const tree = prebuiltTree || await buildTree(token, cfg, headSha, entries);
+  const commit = await createCommit(token, cfg, message, [headSha], tree.sha);
+  const res = await advanceRef(token, cfg, commit.sha);
+  if (res.conflict) throw new RefConflictError(
+    'Update is not a fast forward — another change landed on "' + cfg.branch + '" while committing.');
+  return commit;
+}
+
+// Commit `entries` on cfg.branch with up to `attempts` rebuild-on-race retries.
+async function commitWithRetry(token, cfg, entries, message, attempts) {
+  const max = attempts || 3;
+  let lastErr;
+  for (let i = 0; i < max; i++) {
+    try { return await tryCommitOnce(token, cfg, entries, message); }
+    catch (e) {
+      if (!e.refConflict) throw e;                              // real errors surface immediately
+      lastErr = e;
+      await new Promise(r => setTimeout(r, 500 * (i + 1)));     // small backoff before rebuilding
+    }
+  }
+  throw lastErr;
+}
+
+// Last-resort recovery when plain retries keep losing the race: build our
+// commit against the CURRENT tip, then merge the remote tip into it with a
+// two-parent commit (tree reused from ours). That merge commit descends from
+// whatever HEAD became, so advancing the ref to it is a fast-forward again.
+async function commitMerging(token, cfg, entries, message) {
+  const headA = await getBranchHeadSha(token, cfg);
+  const tree = await buildTree(token, cfg, headA, entries);
+  const ours = await createCommit(token, cfg, message, [headA], tree.sha);
+  const first = await advanceRef(token, cfg, ours.sha);
+  if (first.ok) return ours;                                    // no race after all
+  const remoteTip = await getBranchHeadSha(token, cfg);
+  if (remoteTip === headA) {
+    // Tip never moved yet PATCH refused — surface the original failure mode.
+    throw new Error('GitHub 422: Update is not a fast forward on "' + cfg.branch +
+                    '". The branch may be protected or behind by history we cannot see; retry shortly.');
+  }
+  const merge = await createCommit(
+    token, cfg,
+    'Merge latest "' + cfg.branch + '" changes (admin auto-retry)',
+    [ours.sha, remoteTip], tree.sha);
+  const second = await advanceRef(token, cfg, merge.sha);
+  if (second.ok) return merge;
+  throw new Error('GitHub 422: Update is not a fast forward — "' + cfg.branch +
+                  '" changed repeatedly during this write. Nothing was committed; please retry.');
+}
+
+// files: [{ path, content }] — all entries land in one atomic commit on cfg.branch.
+async function commitFiles(token, cfg, files, message) {
+  const clean = files.map(f => ({ path: String(f.path).replace(/^\/+/, ''), content: f.content }));
+  for (const f of clean) {
+    if (!f.path) throw new Error('Empty file path in commit batch.');
+    if (typeof f.content !== 'string') throw new Error('Content for ' + f.path + ' must be a string.');
+  }
+  try {
+    return await commitWithRetry(token, cfg, clean, message);
+  } catch (e) {
+    if (!e.refConflict) throw e;
+    return commitMerging(token, cfg, clean, message);           // persistent race → merge-commit fallback
+  }
+}
+
+// Single-file convenience wrapper (atomic Data API — no per-file sha needed).
 async function commitFile(token, cfg, filePath, content, message) {
-  const cur = await fetchRemoteFile(token, cfg, filePath);
-  const body = {
-    message,
-    content: Buffer.from(content, 'utf8').toString('base64'),
-    branch: cfg.branch
+  return commitFiles(token, cfg, [{ path: filePath, content }], message);
+}
+
+// Delete a remote file atomically (tree entry with null sha), with the same
+// race recovery: every attempt recomputes the delete-tree against the FRESH
+// branch tip, so a concurrent push can never produce
+// 422 "Update is not a fast forward" without an automatic rebuild+retry.
+async function deleteFile(token, cfg, filePath, message) {
+  const deleteTree = async (headSha) => {
+    const rt = await ghFetch(token, cfg, '/git/trees', {
+      method: 'POST', cache: 'no-store',
+      body: JSON.stringify({ base_tree: headSha, tree: [{ path: filePath, mode: '100644', type: 'blob', sha: null }] })
+    });
+    if (rt.status === 422) return null;                         // path not on this tip — nothing to delete
+    if (!rt.ok) throw new Error('GitHub tree creation failed (' + rt.status + '): ' +
+                                String(await rt.text().catch(() => '')).slice(0, 200));
+    return ghJson(rt);
   };
-  if (cur.exists) body.sha = cur.sha;
-  const r = await ghFetch(token, cfg, '/contents/' + encodeURIComponent(filePath),
-    { method: 'PUT', body: JSON.stringify(body) });
-  if (!r.ok) throw new Error('GitHub write failed (' + r.status + ') for ' + filePath + ': ' + (await r.text()).slice(0, 200));
-  return r.json();
+  let lastErr;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const headSha = await getBranchHeadSha(token, cfg);
+      const tree = await deleteTree(headSha);
+      if (!tree) return false;
+      const commit = await createCommit(token, cfg, message, [headSha], tree.sha);
+      const res = await advanceRef(token, cfg, commit.sha);
+      if (res.ok) return true;
+      throw new RefConflictError('fast-forward race');
+    } catch (e) {
+      if (!e.refConflict) throw e;
+      lastErr = e;
+      await new Promise(r => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+  // Persistent race: merge route, same as writes.
+  const headA = await getBranchHeadSha(token, cfg);
+  const tree = await deleteTree(headA);
+  if (!tree) return false;
+  const ours = await createCommit(token, cfg, message, [headA], tree.sha);
+  const remoteTip = await getBranchHeadSha(token, cfg);
+  if (remoteTip === headA) {
+    const first = await advanceRef(token, cfg, ours.sha);
+    if (first.ok) return true;
+    throw new Error('GitHub 422: Update is not a fast forward on "' + cfg.branch + '". Retry shortly.');
+  }
+  const merge = await createCommit(
+    token, cfg, 'Merge latest "' + cfg.branch + '" changes (admin auto-retry)',
+    [ours.sha, remoteTip], tree.sha);
+  const second = await advanceRef(token, cfg, merge.sha);
+  if (second.ok) return true;
+  void lastErr;
+  throw new Error('GitHub 422: Update is not a fast forward — "' + cfg.branch +
+                  '" changed repeatedly during this delete. Nothing was committed; please retry.');
 }
 
 module.exports = {
@@ -326,6 +641,7 @@ module.exports = {
   readChannelsJson, writeChannelsJson, getRepoConfig,
   loadTemplate, buildPage,
   renderIndexLinks, regenerateIndexLocal, regenerateIndexString,
+  normTag, tagList, classifyChannel, setTags, allSports,
   upsertChannelEntry, removeChannelEntry,
-  fetchRemoteFile, commitFile
+  encodePath, getBranchHeadSha, fetchRemoteFile, commitFile, commitFiles, deleteFile
 };

@@ -80,13 +80,18 @@ async function main() {
 
   if (opts['no-push']) { console.log('  \u00b7 --no-push: commit/push with git when ready.\n'); return; }
 
-  // 4) push to GitHub so Pages redeploys and index.html updates automatically
+  // 4) push to GitHub so Pages redeploys and index.html updates automatically.
+  // ONE atomic commit via the Data API (blobs → tree → commit → ref): no
+  // per-file "sha" is ever sent, so GitHub cannot answer
+  // 422 Invalid request. "sha" wasn't supplied.
   const token = await lib.getToken();
   const cfg = lib.getRepoConfig();
   try {
-    await lib.commitFile(token, cfg, fileName, page, 'Add channel: ' + display);
-    await lib.commitFile(token, cfg, 'channels.json', JSON.stringify(data, null, 2) + '\n', 'Register channel: ' + display);
-    await lib.commitFile(token, cfg, 'index.html', nextIndex, 'Index: add ' + display);
+    await lib.commitFiles(token, cfg, [
+      { path: fileName, content: page },
+      { path: 'channels.json', content: JSON.stringify(data, null, 2) + '\n' },
+      { path: 'index.html', content: nextIndex }
+    ], 'Add channel: ' + display);
     console.log('  \u2714 Committed to ' + cfg.owner + '/' + cfg.repo + '@' + cfg.branch +
                 ' — GitHub Pages will show the new card in ~30-60 s.\n');
   } catch (e) {

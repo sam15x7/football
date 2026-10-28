@@ -50,25 +50,14 @@ async function main() {
   const token = await lib.getToken();
   const cfg = lib.getRepoConfig();
   try {
-    // Delete the page via the Contents API (needs the current sha).
-    const cur = await lib.fetchRemoteFile(token, cfg, fileName);
-    if (cur.exists) {
-      const r = await fetch('https://api.github.com/repos/' + encodeURIComponent(cfg.owner) + '/' +
-        encodeURIComponent(cfg.repo) + '/contents/' + encodeURIComponent(fileName) +
-        '?ref=' + encodeURIComponent(cfg.branch), {
-        method: 'DELETE',
-        headers: {
-          Authorization: 'token ' + token,
-          Accept: 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-          'User-Agent': 'channel-admin'
-        },
-        body: JSON.stringify({ message: 'Remove channel: ' + fileName, sha: cur.sha, branch: cfg.branch })
-      });
-      if (!r.ok) throw new Error('GitHub delete failed (' + r.status + ') for ' + fileName + ': ' + (await r.text()).slice(0, 200));
-    }
-    await lib.commitFile(token, cfg, 'channels.json', JSON.stringify(data, null, 2) + '\n', 'Unregister channel: ' + fileName);
-    await lib.commitFile(token, cfg, 'index.html', nextIndex, 'Index: remove ' + fileName);
+    // ONE atomic commit via the Data API: page deleted (tree entry with null
+    // sha — no per-file "sha" needed, so no 422 Invalid request. "sha" wasn't
+    // supplied.) plus the channels.json + index.html updates, all in one go.
+    await lib.deleteFile(token, cfg, fileName, 'Remove channel: ' + fileName);
+    await lib.commitFiles(token, cfg, [
+      { path: 'channels.json', content: JSON.stringify(data, null, 2) + '\n' },
+      { path: 'index.html', content: nextIndex }
+    ], 'Index: remove ' + fileName);
     console.log('  \u2714 Committed to ' + cfg.owner + '/' + cfg.repo + '@' + cfg.branch + ' — Pages redeploys in ~30-60 s.\n');
   } catch (e) {
     console.warn('\n  \u26a0 Remote commit failed: ' + e.message);
