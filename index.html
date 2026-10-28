@@ -68,21 +68,78 @@
 </style>
 </head>
 <body>
-
-<header>
-  <h1>Sports Channels</h1>
-  <div class="head-tools">
-    <span class="count" id="count"></span>
-  </div>
-</header>
-
-<!-- Channels are added from the backend only (see admin/README.md).
-     This page is public: it just renders the list — no forms, no tokens. -->
-
-<div class="search">
-  <label for="q" class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Search channels</label>
-  <input id="q" type="search" placeholder="Search channels…" autocomplete="off">
+<div id="backdrop" aria-hidden="true">
+  <div class="ken-burns-stage"></div>
+  <canvas id="fx"></canvas>
+  <div class="vignette"></div>
 </div>
+
+<div class="page">
+  <header class="hero">
+    <div class="telemetry-pill" aria-hidden="true">
+      <span class="live-dot"></span>
+      <span>Live Broadcast Directory</span>
+    </div>
+    <div class="emblem" id="emblem" title="Drag and flick">
+      <span class="halo"></span>
+      <span class="ring base"></span>
+      <span class="ring dash"></span>
+      <div class="parallax">
+        <div class="float-wrap">
+          <img class="logo" src="logo.webp" alt="" decoding="async" fetchpriority="high" onerror="document.documentElement.classList.add('nologo')">
+        </div>
+      </div>
+    </div>
+    <h1>The Predictor</h1>
+    <p class="tag">Live sports feeds. Select any channel below to launch its broadcast player.</p>
+  </header>
+
+  <!-- Channels are added from the backend only (see admin/README.md).
+       This page is public: it just renders the list — no forms, no tokens. -->
+  <div class="chrome-deck" id="chromeDeck">
+    <div class="bar-shell">
+      <div class="bar-row">
+        <div class="bar" id="bar">
+          <button class="mini" id="top" type="button" aria-label="Scroll to top">
+            <span class="mini-inner">
+              <img src="logo.webp" alt="" onerror="document.documentElement.classList.add('nologo')">
+            </span>
+          </button>
+          <div class="field">
+            <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+            <label for="q" class="sr">Search channels</label>
+            <input id="q" type="search" placeholder="Search channels, networks, or regions…" autocomplete="off" spellcheck="false">
+            <button class="clear-btn" id="clearBtn" type="button" aria-label="Clear search query">
+              <span class="clear-btn-glyph">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>
+              </span>
+            </button>
+            <kbd class="kbd-hint" aria-hidden="true">/</kbd>
+          </div>
+          <span class="count" id="count" aria-live="polite"></span>
+        </div>
+
+        <button class="action-btn" id="randomBtn" type="button" aria-label="Tune Random Channel">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>
+          </svg>
+          <span>Tune Random</span>
+        </button>
+      </div>
+
+      <div class="filter-row">
+        <div class="region-track" id="regionTrack" role="toolbar" aria-label="Filter channels by region"></div>
+        <div class="view-toggle" role="group" aria-label="Layout view">
+          <button class="view-btn" id="gridViewBtn" type="button" aria-pressed="true" aria-label="Grid view">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          </button>
+          <button class="view-btn" id="listViewBtn" type="button" aria-pressed="false" aria-label="Compact list view">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
 <div class="filters" id="filters" aria-label="Filter by category">
   <div class="filter-group" id="sportChips" role="group" aria-label="Filter by sport"></div>
@@ -140,7 +197,13 @@
   <div class="card" data-sport="football" data-region="netherlands"><a href="ziggosportnl.html" data-sport="football" data-region="netherlands">Ziggo Sport (NL)</a></div>
 </nav>
 
-<p class="empty" id="empty" hidden>No channels match your search.</p>
+  <div class="empty-card" id="empty" hidden>
+    <p class="empty-title">No broadcast feeds match your filter</p>
+    <p class="empty-desc" id="emptyDesc">Try a broader channel name or switch back to all regions.</p>
+    <button class="reset-btn" id="resetBtn" type="button">Show All Channels</button>
+  </div>
+  <div class="end"></div>
+</div>
 
 <script>
   // GENERATED contract: the grid and channels.json stay in sync via the backend
@@ -210,8 +273,429 @@
   queryEl.addEventListener("input", applyFilter);
   applyFilter();
 
-  // Channels are managed from the backend only — see admin/README.md.
-</script>
+  queryEl.addEventListener('input', applyFilter);
 
+  clearBtn.addEventListener('pointerdown', function (e) {
+    e.preventDefault();
+    queryEl.value = '';
+    applyFilter();
+    queryEl.focus();
+  });
+
+  resetBtn.addEventListener('click', function () {
+    queryEl.value = '';
+    activeRegion = 'All';
+    renderRegionPills();
+    applyFilter();
+    queryEl.focus();
+  });
+
+  /* ---------- Pin Button Handler inside Channel Cards ---------- */
+  nav.addEventListener('click', function (e) {
+    var pinBtn = e.target.closest('.pin-btn');
+    if (!pinBtn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var a = pinBtn.closest('a');
+    if (!a) return;
+    var href = a.getAttribute('href');
+    if (pinnedSet.has(href)) {
+      pinnedSet.delete(href);
+      pinBtn.setAttribute('aria-pressed', 'false');
+    } else {
+      pinnedSet.add(href);
+      pinBtn.setAttribute('aria-pressed', 'true');
+    }
+    savePins();
+    if (activeRegion === 'Pinned' && pinnedSet.size === 0) {
+      activeRegion = 'All';
+    }
+    renderRegionPills();
+    applyFilter();
+  });
+
+  /* ---------- Tune Random Channel Action Button ---------- */
+  randomBtn.addEventListener('click', function () {
+    var pool = links.filter(function (a) { return !a.classList.contains('hidden'); });
+    if (!pool.length) pool = links;
+    var pick = pool[Math.floor(Math.random() * pool.length)];
+    if (pick) window.location.href = pick.getAttribute('href');
+  });
+
+  /* ---------- Layout View Switcher (Grid vs Compact) ---------- */
+  function setViewMode(compact) {
+    nav.classList.toggle('compact-view', compact);
+    gridViewBtn.setAttribute('aria-pressed', compact ? 'false' : 'true');
+    listViewBtn.setAttribute('aria-pressed', compact ? 'true' : 'false');
+  }
+  gridViewBtn.addEventListener('click', function () { setViewMode(false); });
+  listViewBtn.addEventListener('click', function () { setViewMode(true); });
+
+  /* ---------- Sticky Bar Docking Observer ---------- */
+  if ('IntersectionObserver' in window && emblem) {
+    new IntersectionObserver(function (entries) {
+      chromeDeck.classList.toggle('docked', !entries[0].isIntersecting);
+    }, { threshold: 0 }).observe(emblem);
+  }
+
+  $('#top').addEventListener('click', function () {
+    window.scrollTo({ top: 0, behavior: REDUCED ? 'auto' : 'smooth' });
+  });
+
+  /* ==========================================================================
+   * 2. Apple Fluid Spring Physics + @asset-animate 3-Layer Parallax
+   * ========================================================================== */
+  function rubberband(overshoot, dimension, constant) {
+    if (constant === undefined) constant = 0.55;
+    var sign = overshoot < 0 ? -1 : 1;
+    var abs = Math.abs(overshoot);
+    return sign * (abs * dimension * constant) / (dimension + constant * abs);
+  }
+
+  function createSpring(initialValue, dampingRatio, response) {
+    return {
+      value: initialValue || 0,
+      target: initialValue || 0,
+      velocity: 0,
+      damping: dampingRatio !== undefined ? dampingRatio : 1.0,
+      response: response !== undefined ? response : 0.35
+    };
+  }
+
+  function stepSpring(s, dt) {
+    var omega = (2 * Math.PI) / s.response;
+    var stiffness = omega * omega;
+    var dampingCoeff = 2 * s.damping * omega;
+    var displacement = s.value - s.target;
+    var accel = -stiffness * displacement - dampingCoeff * s.velocity;
+    s.velocity += accel * dt;
+    s.value += s.velocity * dt;
+    if (Math.abs(s.value - s.target) < 0.05 && Math.abs(s.velocity) < 0.5) {
+      s.value = s.target;
+      s.velocity = 0;
+      return false;
+    }
+    return true;
+  }
+
+  /* ---------- Hero Emblem 1:1 Drag + 3-Layer Depth Parallax ---------- */
+  if (emblem) {
+    var emX = createSpring(0, 1.0, 0.38);
+    var emY = createSpring(0, 1.0, 0.38);
+    var emScale = createSpring(1, 1.0, 0.24);
+    var emRaf = 0;
+    var draggingEmblem = false;
+    var grabOffsetX = 0, grabOffsetY = 0;
+    var history = [];
+
+    function renderEmblem() {
+      emblem.style.transform =
+        'translate3d(' + emX.value.toFixed(2) + 'px,' + emY.value.toFixed(2) + 'px,0) scale(' + emScale.value.toFixed(4) + ')';
+    }
+
+    function tickEmblem() {
+      var dt = 1 / 60;
+      var activeX = draggingEmblem ? false : stepSpring(emX, dt);
+      var activeY = draggingEmblem ? false : stepSpring(emY, dt);
+      var activeS = stepSpring(emScale, dt);
+      renderEmblem();
+      if (activeX || activeY || activeS || draggingEmblem) {
+        emRaf = requestAnimationFrame(tickEmblem);
+      } else {
+        emRaf = 0;
+      }
+    }
+
+    function ensureEmblemLoop() {
+      if (!emRaf && !REDUCED) emRaf = requestAnimationFrame(tickEmblem);
+    }
+
+    emblem.addEventListener('pointerdown', function (e) {
+      if (REDUCED) return;
+      emblem.setPointerCapture(e.pointerId);
+      draggingEmblem = true;
+      grabOffsetX = e.clientX - emX.value;
+      grabOffsetY = e.clientY - emY.value;
+      emX.velocity = 0;
+      emY.velocity = 0;
+      emScale.damping = 1.0;
+      emScale.response = 0.2;
+      emScale.target = 0.94;
+      history = [{ x: emX.value, y: emY.value, t: performance.now() }];
+      ensureEmblemLoop();
+    });
+
+    emblem.addEventListener('pointermove', function (e) {
+      if (!draggingEmblem || REDUCED) return;
+      emX.value = rubberband(e.clientX - grabOffsetX, 92, 0.55);
+      emY.value = rubberband(e.clientY - grabOffsetY, 92, 0.55);
+      var now = performance.now();
+      history.push({ x: emX.value, y: emY.value, t: now });
+      while (history.length > 5 && now - history[0].t > 100) history.shift();
+      renderEmblem();
+    });
+
+    function releaseEmblem() {
+      if (!draggingEmblem) return;
+      draggingEmblem = false;
+      var now = performance.now();
+      var vx = 0, vy = 0;
+      if (history.length >= 2) {
+        var first = history[0];
+        var last = history[history.length - 1];
+        var elapsed = (now - first.t) / 1000;
+        if (elapsed > 0.004 && now - last.t < 120) {
+          vx = (last.x - first.x) / elapsed;
+          vy = (last.y - first.y) / elapsed;
+        }
+      }
+      var speed = Math.hypot(vx, vy);
+      var damping = speed > 180 ? 0.76 : 1.0;
+      emX.damping = damping;
+      emY.damping = damping;
+      emX.response = 0.42;
+      emY.response = 0.42;
+      emX.velocity = vx;
+      emY.velocity = vy;
+      emX.target = 0;
+      emY.target = 0;
+
+      emScale.damping = 0.85;
+      emScale.response = 0.3;
+      emScale.target = 1;
+      ensureEmblemLoop();
+    }
+
+    emblem.addEventListener('pointerup', releaseEmblem);
+    emblem.addEventListener('pointercancel', releaseEmblem);
+
+    /* 3-Layer Parallax on Pointer Move (@asset-animate: -10%, -20%, -30% depth ratios) */
+    window.addEventListener('pointermove', function (e) {
+      if (e.pointerType !== 'mouse' || REDUCED || draggingEmblem) return;
+      var nx = (e.clientX / window.innerWidth) * 2 - 1;
+      var ny = (e.clientY / window.innerHeight) * 2 - 1;
+      emblem.style.setProperty('--px-bg', (-nx * 4).toFixed(2) + 'px');
+      emblem.style.setProperty('--py-bg', (-ny * 4).toFixed(2) + 'px');
+      emblem.style.setProperty('--px-mid', (-nx * 8).toFixed(2) + 'px');
+      emblem.style.setProperty('--py-mid', (-ny * 7).toFixed(2) + 'px');
+      emblem.style.setProperty('--px-fg', (-nx * 13).toFixed(2) + 'px');
+      emblem.style.setProperty('--py-fg', (-ny * 10).toFixed(2) + 'px');
+    });
+  }
+
+  /* ---------- Channel Cards: Instant Pointer-Down Response & Spring Tracking ---------- */
+  var cardStates = new WeakMap();
+  var activeCards = new Set();
+  var cardRaf = 0;
+
+  function getCardState(a) {
+    var st = cardStates.get(a);
+    if (!st) {
+      st = {
+        x: createSpring(0, 1.0, 0.32),
+        y: createSpring(0, 1.0, 0.32),
+        scale: createSpring(1, 1.0, 0.2),
+        spotA: createSpring(0, 1.0, 0.26),
+        downX: 0,
+        downY: 0,
+        pressed: false
+      };
+      cardStates.set(a, st);
+    }
+    return st;
+  }
+
+  function tickCards() {
+    var dt = 1 / 60;
+    activeCards.forEach(function (a) {
+      var st = getCardState(a);
+      var mx = stepSpring(st.x, dt);
+      var my = stepSpring(st.y, dt);
+      var ms = stepSpring(st.scale, dt);
+      var ma = stepSpring(st.spotA, dt);
+
+      a.style.setProperty('--tx', st.x.value.toFixed(2) + 'px');
+      a.style.setProperty('--ty', st.y.value.toFixed(2) + 'px');
+      a.style.setProperty('--sc', st.scale.value.toFixed(4));
+      a.style.setProperty('--spot-a', st.spotA.value.toFixed(3));
+
+      if (!mx && !my && !ms && !ma && !st.pressed) {
+        activeCards.delete(a);
+      }
+    });
+    if (activeCards.size > 0) {
+      cardRaf = requestAnimationFrame(tickCards);
+    } else {
+      cardRaf = 0;
+    }
+  }
+
+  function wakeCard(a) {
+    if (REDUCED) return;
+    activeCards.add(a);
+    if (!cardRaf) cardRaf = requestAnimationFrame(tickCards);
+  }
+
+  nav.addEventListener('pointerdown', function (e) {
+    if (e.target.closest('.pin-btn')) return;
+    var a = e.target.closest('a');
+    if (!a) return;
+    a.classList.add('is-pressed');
+    if (REDUCED) return;
+    var st = getCardState(a);
+    st.pressed = true;
+    st.downX = e.clientX;
+    st.downY = e.clientY;
+    st.scale.damping = 1.0;
+    st.scale.response = 0.16;
+    st.scale.target = 0.968;
+    st.spotA.target = 1;
+    wakeCard(a);
+  });
+
+  nav.addEventListener('pointermove', function (e) {
+    if (REDUCED) return;
+    var a = e.target.closest('a');
+    if (!a) return;
+    var r = a.getBoundingClientRect();
+    var relX = e.clientX - r.left;
+    var relY = e.clientY - r.top;
+    a.style.setProperty('--spot-x', ((relX / r.width) * 100).toFixed(1) + '%');
+    a.style.setProperty('--spot-y', ((relY / r.height) * 100).toFixed(1) + '%');
+
+    var st = getCardState(a);
+    st.spotA.target = 1;
+
+    if (e.pointerType === 'mouse') {
+      var cx = relX - r.width / 2;
+      var cy = relY - r.height / 2;
+      st.x.target = rubberband(cx * 0.07, 5, 0.55);
+      st.y.target = rubberband(cy * 0.1, 4, 0.55);
+      wakeCard(a);
+    } else if (st.pressed) {
+      if (Math.hypot(e.clientX - st.downX, e.clientY - st.downY) > 10) {
+        st.pressed = false;
+        a.classList.remove('is-pressed');
+        st.scale.target = 1;
+        st.spotA.target = 0;
+        wakeCard(a);
+      }
+    }
+  });
+
+  function releaseCard(e) {
+    var a = e.target.closest('a');
+    if (!a) return;
+    a.classList.remove('is-pressed');
+    if (REDUCED) return;
+    var st = getCardState(a);
+    st.pressed = false;
+    st.scale.damping = 0.88;
+    st.scale.response = 0.26;
+    st.scale.target = 1;
+    if (e.type === 'pointerout' || e.type === 'pointercancel' || e.pointerType !== 'mouse') {
+      st.x.target = 0;
+      st.y.target = 0;
+      st.spotA.target = 0;
+    }
+    wakeCard(a);
+  }
+
+  nav.addEventListener('pointerup', releaseCard);
+  nav.addEventListener('pointercancel', releaseCard);
+  nav.addEventListener('pointerout', function (e) {
+    var a = e.target.closest('a');
+    if (a && !a.contains(e.relatedTarget)) releaseCard(e);
+  });
+
+  /* ---------- Keyboard Shortcuts: "/" to search, "Esc" to clear ---------- */
+  document.addEventListener('keydown', function (e) {
+    var typing = /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+    if (e.key === '/' && !typing) {
+      e.preventDefault();
+      queryEl.focus();
+    }
+    if (e.key === 'Escape' && document.activeElement === queryEl) {
+      queryEl.value = '';
+      applyFilter();
+      queryEl.blur();
+    }
+  });
+
+  /* ==========================================================================
+   * 3. @asset-animate Ambient Bokeh Particles Canvas (#fx)
+   * ========================================================================== */
+  var fx = $('#fx'), ctx = fx.getContext('2d');
+  var W = 0, H = 0, particles = [], rafId = 0, running = false;
+
+  function createParticle() {
+    return {
+      x: Math.random() * W,
+      y: Math.random() * H,
+      size: 1 + Math.random() * 2.2,
+      speedX: (Math.random() - 0.5) * 0.26,
+      speedY: -0.08 - Math.random() * 0.22,
+      opacity: 0.12 + Math.random() * 0.34,
+      pulse: Math.random() * Math.PI * 2
+    };
+  }
+
+  function resizeFx() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    fx.width = W * dpr;
+    fx.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var count = Math.min(34, Math.max(14, Math.round((W * H) / 38000)));
+    while (particles.length < count) particles.push(createParticle());
+    particles.length = count;
+  }
+
+  function animateParticles() {
+    ctx.clearRect(0, 0, W, H);
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      p.x += p.speedX;
+      p.y += p.speedY;
+      p.pulse += 0.018;
+
+      if (p.x < -10) p.x = W + 10;
+      if (p.x > W + 10) p.x = -10;
+      if (p.y < -10) p.y = H + 10;
+      if (p.y > H + 10) p.y = -10;
+
+      var alpha = p.opacity * (0.5 + 0.5 * Math.sin(p.pulse));
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = '#D4AF37';
+      ctx.globalAlpha = alpha;
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    rafId = requestAnimationFrame(animateParticles);
+  }
+
+  function startParticles() {
+    if (running || REDUCED || document.hidden) return;
+    running = true;
+    rafId = requestAnimationFrame(animateParticles);
+  }
+
+  function stopParticles() {
+    running = false;
+    cancelAnimationFrame(rafId);
+  }
+
+  resizeFx();
+  startParticles();
+  window.addEventListener('resize', resizeFx);
+  document.addEventListener('visibilitychange', function () {
+    document.hidden ? stopParticles() : startParticles();
+  });
+
+  // Channels are managed from the backend only — see admin/README.md.
+})();
+</script>
 </body>
 </html>
