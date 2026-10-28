@@ -411,6 +411,14 @@
         "football"
       ],
       "region": "UK"
+    },
+    {
+      "file": "tntsports2uk.html",
+      "name": "TNT Sports 2 UK",
+      "sport": [
+        "football"
+      ],
+      "region": "UK"
     }
   ]
 }
