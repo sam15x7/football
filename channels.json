@@ -3,216 +3,406 @@
   "_note": "Source of truth for the channel list. index.html is GENERATED from this file (admin/add-channel.js or the admin dashboard keep both in sync). The GitHub owner/repo/branch used to publish are stored LOCALLY in your browser's localStorage by the admin dashboard (and in channels.json only as a convenience hint) — never put a token in this public file; tokens live only in the encrypted vault admin/token.enc, GH_TOKEN env, or your browser's localStorage.",
   "channels": [
     {
-      "file": "ZDFDE.html",
-      "name": "ZDF (Germany)"
-    },
-    {
-      "file": "beinsportsmena1.html",
-      "name": "beIN Sports MENA 1"
-    },
-    {
-      "file": "beinsportsmena2(eng).html",
-      "name": "beIN Sports MENA 2 (English)"
-    },
-    {
-      "file": "beinsportsmena3.html",
-      "name": "beIN Sports MENA 3"
-    },
-    {
-      "file": "foxsoccerplus.html",
-      "name": "Fox Soccer Plus"
-    },
-    {
-      "file": "foxsports1usa.html",
-      "name": "Fox Sports 1 (USA)"
-    },
-    {
-      "file": "foxsports2usa.html",
-      "name": "Fox Sports 2 (USA)"
-    },
-    {
-      "file": "itv1uk.html",
-      "name": "ITV 1 (UK)"
-    },
-    {
-      "file": "itv2uk.html",
-      "name": "ITV 2 (UK)"
-    },
-    {
-      "file": "itv3uk.html",
-      "name": "ITV 3 (UK)"
-    },
-    {
-      "file": "novasportsstart.html",
-      "name": "Nova Sports Start"
-    },
-    {
-      "file": "premiersportsireland2.html",
-      "name": "Premier Sports Ireland 2"
-    },
-    {
-      "file": "skysportcalcioitaly.html",
-      "name": "Sky Sport Calcio (Italy)"
-    },
-    {
-      "file": "sonyten1.html",
-      "name": "Sony TEN 1"
-    },
-    {
-      "file": "sonyten2.html",
-      "name": "Sony TEN 2"
-    },
-    {
-      "file": "sport5israel.html",
-      "name": "Sport 5 (Israel)"
-    },
-    {
-      "file": "sporttv1.html",
-      "name": "Sport TV 1"
-    },
-    {
-      "file": "sporttv2.html",
-      "name": "Sport TV 2"
-    },
-    {
-      "file": "sporttv3.html",
-      "name": "Sport TV 3"
-    },
-    {
-      "file": "sporttv4.html",
-      "name": "Sport TV 4"
-    },
-    {
-      "file": "sporttv5.html",
-      "name": "Sport TV 5"
-    },
-    {
-      "file": "sporttv6.html",
-      "name": "Sport TV 6"
-    },
-    {
-      "file": "sportvbrasil.html",
-      "name": "SporTV (Brazil)"
-    },
-    {
-      "file": "supersportlaliga.html",
-      "name": "SuperSport LaLiga"
-    },
-    {
-      "file": "tf1france.html",
-      "name": "TF1 (France)"
-    },
-    {
-      "file": "tycsportsargentina.html",
-      "name": "TyC Sports (Argentina)"
-    },
-    {
-      "file": "viaplaysports2uk.html",
-      "name": "Viaplay Sports 2 (UK)"
-    },
-    {
-      "file": "ziggosportnl.html",
-      "name": "Ziggo Sport NL"
-    },
-    {
       "file": "abudhabisports1uae.html",
-      "name": "Abu Dhabi Sports 1 UAE"
-    },
-    {
-      "file": "supersportpremierleague.html",
-      "name": "Super Sport Premier League"
-    },
-    {
-      "file": "telefeargentina.html",
-      "name": "Telefe Argentina"
-    },
-    {
-      "file": "skysportsf1uk.html",
-      "name": "Sky Sports F1 UK"
-    },
-    {
-      "file": "movistarligadecampeones.html",
-      "name": "Movistar Liga De Campeones"
-    },
-    {
-      "file": "daznlaliga.html",
-      "name": "Dazn LaLiga"
-    },
-    {
-      "file": "espnusa.html",
-      "name": "ESPN USA"
-    },
-    {
-      "file": "espn2usa.html",
-      "name": "ESPN 2 USA"
-    },
-    {
-      "file": "espnu.html",
-      "name": "ESPN U"
-    },
-    {
-      "file": "maxsport1bulgaria.html",
-      "name": "Max Sport 1 Bulgaria"
-    },
-    {
-      "file": "foxdeportes.html",
-      "name": "Fox Deportes"
-    },
-    {
-      "file": "laligatvuk.html",
-      "name": "LaLiga TV UK"
-    },
-    {
-      "file": "beinsportsusa.html",
-      "name": "beIN Sports USA"
-    },
-    {
-      "file": "ligue13france.html",
-      "name": "Ligue1+ 3 France"
-    },
-    {
-      "file": "elevensports3poland.html",
-      "name": "Eleven Sports 3 Poland"
-    },
-    {
-      "file": "tv3sportdenmark.html",
-      "name": "TV 3 Sport Denmark"
-    },
-    {
-      "file": "sport5plusisrael.html",
-      "name": "Sport 5 Plus Israel"
-    },
-    {
-      "file": "novasport3sk.html",
-      "name": "Nova Sport 3 SK"
+      "name": "Abu Dhabi Sports 1 UAE",
+      "region": "UAE"
     },
     {
       "file": "appletv.html",
-      "name": "Apple TV"
+      "name": "Apple TV",
+      "sport": [
+        "mls",
+        "football"
+      ]
     },
     {
       "file": "astrosupersport2.html",
-      "name": "Astro SuperSport 2"
+      "name": "Astro SuperSport 2",
+      "sport": [
+        "football",
+        "badminton"
+      ]
     },
     {
-      "file": "sport2israel.html",
-      "name": "Sport 2 Israel"
+      "file": "beinsportsmena1.html",
+      "name": "beIN Sports MENA 1",
+      "sport": [
+        "football"
+      ],
+      "region": "MENA"
     },
     {
-      "file": "diemasport3bulgaria.html",
-      "name": "Diema Sport 3 Bulgaria"
+      "file": "beinsportsmena2(eng).html",
+      "name": "beIN Sports MENA 2 (English)",
+      "sport": [
+        "football"
+      ],
+      "region": "MENA"
     },
     {
-      "file": "espn1nl.html",
-      "name": "ESPN 1 NL"
+      "file": "beinsportsmena3.html",
+      "name": "beIN Sports MENA 3",
+      "sport": [
+        "football"
+      ],
+      "region": "MENA"
     },
     {
-      "file": "sportklub1croatia.html",
-      "name": "Sport Klub 1 Croatia"
+      "file": "beinsportsusa.html",
+      "name": "beIN Sports USA",
+      "sport": [
+        "football",
+        "mma"
+      ],
+      "region": "USA"
     },
     {
-      "file": "sport1israel.html",
-      "name": "Sport 1 Israel"
+      "file": "daznlaliga.html",
+      "name": "Dazn LaLiga",
+      "sport": [
+        "football"
+      ],
+      "region": "Netherlands"
+    },
+    {
+      "file": "elevensports3poland.html",
+      "name": "Eleven Sports 3 Poland",
+      "sport": [
+        "football"
+      ],
+      "region": "Poland"
+    },
+    {
+      "file": "espn2usa.html",
+      "name": "ESPN 2 USA",
+      "sport": [
+        "football",
+        "basketball",
+        "mlb"
+      ],
+      "region": "USA"
+    },
+    {
+      "file": "espnu.html",
+      "name": "ESPN U",
+      "sport": [
+        "college football",
+        "basketball"
+      ]
+    },
+    {
+      "file": "espnusa.html",
+      "name": "ESPN USA",
+      "sport": [
+        "football",
+        "basketball",
+        "ufc"
+      ],
+      "region": "USA"
+    },
+    {
+      "file": "foxdeportes.html",
+      "name": "Fox Deportes",
+      "sport": [
+        "football",
+        "boxing"
+      ]
+    },
+    {
+      "file": "foxsoccerplus.html",
+      "name": "Fox Soccer Plus",
+      "sport": [
+        "football"
+      ]
+    },
+    {
+      "file": "foxsports1usa.html",
+      "name": "Fox Sports 1 (USA)",
+      "sport": [
+        "nfl",
+        "college football",
+        "mma"
+      ],
+      "region": "USA"
+    },
+    {
+      "file": "foxsports2usa.html",
+      "name": "Fox Sports 2 (USA)",
+      "sport": [
+        "nascar",
+        "football",
+        "field hockey"
+      ],
+      "region": "USA"
+    },
+    {
+      "file": "itv1uk.html",
+      "name": "ITV 1 (UK)",
+      "sport": [
+        "football",
+        "horse racing"
+      ],
+      "region": "UK"
+    },
+    {
+      "file": "itv2uk.html",
+      "name": "ITV 2 (UK)",
+      "sport": [
+        "tennis",
+        "rugby"
+      ],
+      "region": "UK"
+    },
+    {
+      "file": "itv3uk.html",
+      "name": "ITV 3 (UK)",
+      "sport": [
+        "football",
+        "horse racing"
+      ],
+      "region": "UK"
+    },
+    {
+      "file": "laligatvuk.html",
+      "name": "LaLiga TV UK",
+      "sport": [
+        "football"
+      ],
+      "region": "UK"
+    },
+    {
+      "file": "ligue13france.html",
+      "name": "Ligue1+ 3 France",
+      "sport": [
+        "football",
+        "rugby"
+      ],
+      "region": "France"
+    },
+    {
+      "file": "maxsport1bulgaria.html",
+      "name": "Max Sport 1 Bulgaria",
+      "sport": [
+        "football",
+        "volleyball"
+      ],
+      "region": "Bulgaria"
+    },
+    {
+      "file": "movistarligadecampeones.html",
+      "name": "Movistar Liga De Campeones",
+      "sport": [
+        "football"
+      ]
+    },
+    {
+      "file": "novasport3sk.html",
+      "name": "Nova Sport 3 SK",
+      "sport": [
+        "football",
+        "hockey"
+      ],
+      "region": "Slovakia"
+    },
+    {
+      "file": "novasportsstart.html",
+      "name": "Nova Sports Start",
+      "sport": [
+        "football",
+        "basketball"
+      ]
+    },
+    {
+      "file": "premiersportsireland2.html",
+      "name": "Premier Sports Ireland 2",
+      "sport": [
+        "gaelic games",
+        "horse racing"
+      ],
+      "region": "Ireland"
+    },
+    {
+      "file": "skysportcalcioitaly.html",
+      "name": "Sky Sport Calcio (Italy)",
+      "sport": [
+        "football"
+      ],
+      "region": "Italy"
+    },
+    {
+      "file": "skysportsf1uk.html",
+      "name": "Sky Sports F1 UK",
+      "sport": [
+        "motorsport",
+        "f1"
+      ],
+      "region": "UK"
+    },
+    {
+      "file": "sonyten1.html",
+      "name": "Sony TEN 1",
+      "sport": [
+        "cricket",
+        "tennis"
+      ]
+    },
+    {
+      "file": "sonyten2.html",
+      "name": "Sony TEN 2",
+      "sport": [
+        "tennis",
+        "badminton",
+        "football"
+      ]
+    },
+    {
+      "file": "sport5israel.html",
+      "name": "Sport 5 (Israel)",
+      "sport": [
+        "football",
+        "basketball",
+        "tennis"
+      ],
+      "region": "Israel"
+    },
+    {
+      "file": "sport5plusisrael.html",
+      "name": "Sport 5 Plus Israel",
+      "sport": [
+        "football",
+        "basketball",
+        "tennis"
+      ],
+      "region": "Israel"
+    },
+    {
+      "file": "sporttv1.html",
+      "name": "Sport TV 1",
+      "sport": [
+        "football"
+      ]
+    },
+    {
+      "file": "sporttv2.html",
+      "name": "Sport TV 2",
+      "sport": [
+        "football"
+      ]
+    },
+    {
+      "file": "sporttv3.html",
+      "name": "Sport TV 3",
+      "sport": [
+        "football",
+        "motorsport"
+      ]
+    },
+    {
+      "file": "sporttv4.html",
+      "name": "Sport TV 4",
+      "sport": [
+        "football",
+        "cycling"
+      ]
+    },
+    {
+      "file": "sporttv5.html",
+      "name": "Sport TV 5",
+      "sport": [
+        "football",
+        "basketball"
+      ]
+    },
+    {
+      "file": "sporttv6.html",
+      "name": "Sport TV 6",
+      "sport": [
+        "football",
+        "combat sports"
+      ]
+    },
+    {
+      "file": "sportvbrasil.html",
+      "name": "SporTV (Brazil)",
+      "sport": [
+        "football",
+        "volleyball"
+      ],
+      "region": "Brazil"
+    },
+    {
+      "file": "supersportpremierleague.html",
+      "name": "Super Sport Premier League",
+      "sport": [
+        "football"
+      ]
+    },
+    {
+      "file": "supersportlaliga.html",
+      "name": "SuperSport LaLiga",
+      "sport": [
+        "football"
+      ]
+    },
+    {
+      "file": "telefeargentina.html",
+      "name": "Telefe Argentina",
+      "sport": [
+        "football",
+        "boxing"
+      ],
+      "region": "Argentina"
+    },
+    {
+      "file": "tf1france.html",
+      "name": "TF1 (France)",
+      "sport": [
+        "football"
+      ],
+      "region": "France"
+    },
+    {
+      "file": "tv3sportdenmark.html",
+      "name": "TV 3 Sport Denmark",
+      "sport": [
+        "football",
+        "handball"
+      ],
+      "region": "Denmark"
+    },
+    {
+      "file": "tycsportsargentina.html",
+      "name": "TyC Sports (Argentina)",
+      "sport": [
+        "football",
+        "basketball"
+      ],
+      "region": "Argentina"
+    },
+    {
+      "file": "viaplaysports2uk.html",
+      "name": "Viaplay Sports 2 (UK)",
+      "sport": [
+        "football",
+        "darts"
+      ],
+      "region": "UK"
+    },
+    {
+      "file": "ZDFDE.html",
+      "name": "ZDF (Germany)",
+      "sport": [
+        "football"
+      ],
+      "region": "Germany"
+    },
+    {
+      "file": "ziggosportnl.html",
+      "name": "Ziggo Sport (NL)",
+      "sport": [
+        "football"
+      ],
+      "region": "Netherlands"
     }
   ]
 }
