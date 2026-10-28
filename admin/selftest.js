@@ -172,7 +172,7 @@ const files = () => materializeTree(commits[headSha].tree);
   const before = JSON.parse(F()['channels.json']).channels.length;
   const NEWFILE = 'espn4(argentina).html';
   $('chName').value = 'ESPN 4 (Argentina)';
-  $('chUrl').value = 'https://dlive.sx/cast/stream-900.php';
+  $('chUrl').value = 'https://thedaddy.pk/cast/stream-900.php';
   $('addBtn').click();
   await new Promise(r => setTimeout(r, 900));
   assert(/Added|Updated/.test($('addStatus').textContent), 'add-channel succeeded: ' + $('addStatus').textContent);
@@ -194,7 +194,7 @@ const files = () => materializeTree(commits[headSha].tree);
   assert(!F()['index.html'].includes(NEWFILE), 'index.html regenerated without it');
 
   // 6. Preview builds locally, nothing uploaded.
-  $('chName').value = 'Test Preview'; $('chUrl').value = 'https://dlive.sx/cast/stream-885.php';
+  $('chName').value = 'Test Preview'; $('chUrl').value = 'https://thedaddy.pk/cast/stream-885.php';
   $('previewBtn').click();
   assert(true, 'preview ran without throwing');
 

@@ -3,64 +3,644 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#09080a">
 <title>Fox Sports 1 (USA)</title>
 
 <!-- Open the connection to the stream host right away, before the iframe needs it -->
-<link rel="preconnect" href="https://dlive.sx" crossorigin>
-<link rel="dns-prefetch" href="https://dlive.sx">
+<link rel="preconnect" href="https://thedaddy.pk" crossorigin>
+<link rel="dns-prefetch" href="https://thedaddy.pk">
 
-<!-- Font loads without blocking the page, so it never delays the iframe -->
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&display=swap"></noscript>
+<!-- Fonts load without blocking the page, so they never delay the iframe -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap"></noscript>
 
 <style>
-  /* ---------- Watermark settings (centered) ---------- */
+  /* ---------- Watermark & Design System Tokens ---------- */
   :root {
+    color-scheme: dark;
     --wm-size: 22%;      /* width of the logo relative to the player */
     --wm-opacity: .4;    /* 40% */
     --bg: #09080a;
+    --surface: #111014;
+    --surface-glass: rgba(20, 18, 23, 0.76);
+    --surface-hover: rgba(32, 29, 36, 0.88);
     --gold: #d4af37;
-    --line: #2b262d;
+    --gold-hi: #edd174;
+    --gold-dim: rgba(212, 175, 55, 0.14);
+    --gold-border: rgba(212, 175, 55, 0.36);
+    --line: rgba(255, 255, 255, 0.09);
+    --line-hi: rgba(255, 255, 255, 0.16);
+    --text: #f4f1ea;
+    --text-muted: #9e988e;
+    --text-dim: #6e6960;
+    --live: #30d158;
     --w: min(100%, calc((100dvh - 150px) * 16 / 9));   /* player width, keeps 16:9 inside the screen */
+    --font-head: 'Barlow Condensed', system-ui, -apple-system, sans-serif;
+    --font-body: 'Barlow', system-ui, -apple-system, sans-serif;
+    --font-mono: 'Space Mono', ui-monospace, SFMono-Regular, monospace;
+    --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
   }
-  /* --------------------------------------------------- */
+  /* ------------------------------------------------------ */
 
-  * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); font-family: Barlow, system-ui, sans-serif; }
-  body { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; gap: 10px; }
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
 
-  /* Player = video + marquee. This is what goes fullscreen, so both stay visible. */
-  .player { width: var(--w); background: #000; border: 1px solid var(--line); display: flex; flex-direction: column; }
-  .player:fullscreen, .player.pseudo-fs { width: 100vw; height: 100dvh; border: 0; }
-  .player.pseudo-fs { position: fixed; inset: 0; z-index: 999; }
+  [hidden] {
+    display: none !important;
+  }
 
-  .stage { position: relative; overflow: hidden; background: #000; width: 100%; aspect-ratio: 16 / 9; }
-  .player:fullscreen .stage, .player.pseudo-fs .stage { aspect-ratio: auto; flex: 1 1 auto; min-height: 0; }
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-  .stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
+  body {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding:
+      max(12px, env(safe-area-inset-top))
+      max(16px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom))
+      max(16px, env(safe-area-inset-left));
+    gap: 12px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Subtle ambient theater glow (@asset-animate breathing aura) */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(50rem 28rem at 50% 38%, rgba(212, 175, 55, 0.065), transparent 70%);
+    animation: ambient-breathe 8s ease-in-out infinite;
+    will-change: opacity, transform;
+  }
+
+  @keyframes ambient-breathe {
+    0%, 100% { opacity: 0.75; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.03); }
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 3px;
+  }
+
+  /* ---------- Top Broadcast Header ---------- */
+  .broadcast-bar {
+    position: relative;
+    z-index: 1;
+    width: var(--w);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 2px;
+  }
+
+  .channel-id {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .live-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: rgba(48, 209, 88, 0.1);
+    border: 1px solid rgba(48, 209, 88, 0.28);
+    font: 700 10px/1 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--live);
+    flex: none;
+  }
+
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--live);
+    box-shadow: 0 0 8px var(--live);
+    animation: pulse-dot 2.2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+
+  .channel-title {
+    margin: 0;
+    font: 700 clamp(20px, 2.6vw, 26px)/1 var(--font-head);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stream-meta {
+    font: 400 11px/1 var(--font-mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  /* ---------- Player = video + marquee (goes fullscreen together) ---------- */
+  .player {
+    position: relative;
+    z-index: 1;
+    width: var(--w);
+    background: #000;
+    border: 1px solid var(--line);
+    border-top-color: var(--line-hi);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow:
+      0 24px 60px -18px rgba(0, 0, 0, 0.88),
+      0 0 0 1px rgba(212, 175, 55, 0.05);
+  }
+
+  .player:fullscreen,
+  .player:-webkit-full-screen,
+  .player.pseudo-fs {
+    width: 100vw;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .player.pseudo-fs {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+  }
+
+  .stage {
+    position: relative;
+    overflow: hidden;
+    background: #000;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+  }
+
+  .player:fullscreen .stage,
+  .player:-webkit-full-screen .stage,
+  .player.pseudo-fs .stage {
+    aspect-ratio: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .stage iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #000;
+  }
 
   .wm {
-    position: absolute; z-index: 5; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: var(--wm-size); height: auto; opacity: var(--wm-opacity);
-    pointer-events: none; user-select: none; -webkit-user-drag: none;
+    position: absolute;
+    z-index: 5;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: var(--wm-size);
+    height: auto;
+    opacity: var(--wm-opacity);
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
   }
 
-  /* WhatsApp channel marquee */
-  .marquee { flex: none; overflow: hidden; background: #0d0c0f; border-top: 1px solid var(--line); height: 38px; display: flex; align-items: center; }
-  .track { display: inline-flex; white-space: nowrap; animation: scroll 32s linear infinite; will-change: transform; }
-  .marquee:hover .track { animation-play-state: paused; }
-  .track a { color: var(--gold); text-decoration: none; font: 600 14px Barlow, system-ui, sans-serif; letter-spacing: .02em; padding: 0 28px; }
-  .track a:hover { text-decoration: underline; }
-  .track a::after { content: "\25C6"; margin-left: 56px; color: var(--line); }
-  @keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-  @media (prefers-reduced-motion: reduce) { .track { animation: none; } }
+  /* ---------- Restyled WhatsApp Channel Marquee ---------- */
+  .marquee {
+    flex: none;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, #100e13 0%, #0b0a0d 100%);
+    border-top: 1px solid rgba(212, 175, 55, 0.18);
+    height: 40px;
+    display: flex;
+    align-items: center;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+  }
 
-  button { font: 500 14px Barlow, system-ui, sans-serif; color: #ece6d6; background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 8px 16px; cursor: pointer; }
-  button:hover { border-color: var(--gold); color: var(--gold); }
-  button:focus-visible, .track a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .track {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    animation: scroll 34s linear infinite;
+    will-change: transform;
+  }
+
+  .marquee:hover .track,
+  .marquee:focus-within .track {
+    animation-play-state: paused;
+  }
+
+  .track a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    color: var(--text);
+    text-decoration: none;
+    font: 500 13.5px/1 var(--font-body);
+    letter-spacing: 0.015em;
+    padding: 0 26px;
+    transition: color 160ms ease;
+  }
+
+  .track a::before {
+    content: "WHATSAPP";
+    font: 700 10px/1 var(--font-mono);
+    letter-spacing: 0.08em;
+    color: var(--gold);
+    background: var(--gold-dim);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 4px;
+    padding: 3px 6px;
+    margin-right: 10px;
+  }
+
+  .track a:hover {
+    color: var(--gold-hi);
+  }
+
+  .track a::after {
+    content: "\25C6";
+    margin-left: 44px;
+    font-size: 9px;
+    color: rgba(212, 175, 55, 0.42);
+  }
+
+  @keyframes scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* ---------- Bottom Action Bar (Apple HIG 44px Touch Targets) ---------- */
+  .control-bar {
+    position: relative;
+    z-index: 1;
+    width: var(--w);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 18px;
+    border-radius: 999px;
+    font: 600 14px/1 var(--font-body);
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    transition:
+      transform 120ms var(--ease-spring),
+      background-color 180ms ease,
+      border-color 180ms ease,
+      color 180ms ease,
+      box-shadow 200ms ease;
+  }
+
+  .btn svg {
+    width: 17px;
+    height: 17px;
+    flex: none;
+  }
+
+  .btn:active {
+    transform: scale(0.97);
+  }
+
+  /* Persistent "Join WhatsApp Channel" Button */
+  .btn-whatsapp {
+    background: linear-gradient(180deg, rgba(212, 175, 55, 0.18) 0%, rgba(212, 175, 55, 0.09) 100%);
+    color: var(--gold-hi);
+    border: 1px solid var(--gold-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 24px -10px rgba(0, 0, 0, 0.65);
+  }
+
+  .btn-whatsapp:hover {
+    background: rgba(212, 175, 55, 0.24);
+    border-color: var(--gold);
+    color: #fff;
+    box-shadow: 0 10px 26px -8px rgba(212, 175, 55, 0.28);
+  }
+
+  /* Fullscreen Button */
+  .btn-fs {
+    margin-left: auto;
+    background: var(--surface-glass);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-top-color: var(--line-hi);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+
+  .btn-fs:hover {
+    background: var(--surface-hover);
+    border-color: var(--gold-border);
+    color: var(--gold-hi);
+  }
+
+  .btn-fs .kbd-tag {
+    font: 400 10px/1 var(--font-mono);
+    color: var(--text-muted);
+    padding: 3px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--line);
+    margin-left: 2px;
+  }
+
+  /* Hide persistent WhatsApp button & header chrome when in any fullscreen mode */
+  body.is-fullscreen #waPersistentBtn,
+  :fullscreen #waPersistentBtn,
+  :-webkit-full-screen #waPersistentBtn,
+  .player:fullscreen ~ .control-bar #waPersistentBtn,
+  .player:-webkit-full-screen ~ .control-bar #waPersistentBtn,
+  .player.pseudo-fs ~ .control-bar #waPersistentBtn,
+  body.is-fullscreen .broadcast-bar,
+  .player.pseudo-fs ~ .control-bar {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  /* ---------- WhatsApp Channel Join Popup Modal ---------- */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(5, 4, 6, 0.72);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    backdrop-filter: blur(16px) saturate(160%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 260ms var(--ease-spring),
+      visibility 0s linear 260ms;
+  }
+
+  .modal-backdrop.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition:
+      opacity 260ms var(--ease-spring),
+      visibility 0s linear 0s;
+  }
+
+  .modal-card {
+    position: relative;
+    width: min(100%, 380px);
+    padding: 28px 24px 22px;
+    border-radius: 20px;
+    background: linear-gradient(165deg, rgba(24, 22, 28, 0.96) 0%, rgba(13, 12, 15, 0.98) 100%);
+    border: 1px solid var(--line-hi);
+    border-top-color: rgba(212, 175, 55, 0.45);
+    box-shadow:
+      0 28px 64px -16px rgba(0, 0, 0, 0.92),
+      0 0 40px -12px rgba(212, 175, 55, 0.22);
+    text-align: center;
+    transform: translateY(12px) scale(0.96);
+    transition: transform 280ms var(--ease-spring);
+  }
+
+  .modal-backdrop.is-open .modal-card {
+    transform: translateY(0) scale(1);
+  }
+
+  /* 44x44px Close (X) Button */
+  .modal-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    padding: 0;
+    transition: color 150ms ease, transform 120ms ease;
+  }
+
+  .modal-close-pill {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--line);
+    display: grid;
+    place-items: center;
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+
+  .modal-close:hover {
+    color: var(--text);
+  }
+
+  .modal-close:hover .modal-close-pill {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--gold-border);
+  }
+
+  .modal-close:active {
+    transform: scale(0.92);
+  }
+
+  .modal-close svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+  }
+
+  .modal-icon-wrap {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 14px;
+    border-radius: 16px;
+    background: radial-gradient(circle at 50% 25%, rgba(212, 175, 55, 0.24), rgba(212, 175, 55, 0.06));
+    border: 1px solid var(--gold-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    display: grid;
+    place-items: center;
+    color: var(--gold);
+  }
+
+  .modal-icon-wrap svg {
+    width: 28px;
+    height: 28px;
+    fill: currentColor;
+  }
+
+  .modal-eyebrow {
+    display: block;
+    font: 700 10px/1 var(--font-mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+
+  .modal-title {
+    margin: 0;
+    font: 700 28px/1.05 var(--font-head);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .modal-copy {
+    margin: 8px auto 20px;
+    font: 400 14.5px/1.45 var(--font-body);
+    color: var(--text-muted);
+    max-width: 30ch;
+  }
+
+  .modal-cta {
+    width: 100%;
+    min-height: 46px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold) 100%);
+    color: #09080a;
+    border: 0;
+    font: 600 15px/1 var(--font-body);
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 12px 28px -10px rgba(212, 175, 55, 0.55);
+    transition: transform 120ms var(--ease-spring), filter 160ms ease;
+  }
+
+  .modal-cta:hover {
+    filter: brightness(1.06);
+  }
+
+  .modal-cta:active {
+    transform: scale(0.98);
+  }
+
+  .modal-cta svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+  }
+
+  .modal-later {
+    margin-top: 8px;
+    width: 100%;
+    min-height: 44px;
+    background: transparent;
+    border: 0;
+    border-radius: 10px;
+    color: var(--text-muted);
+    font: 500 13.5px/1 var(--font-body);
+    cursor: pointer;
+    transition: color 150ms ease, background-color 150ms ease;
+  }
+
+  .modal-later:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  /* ---------- Responsive Mobile Tuning ---------- */
+  @media (max-width: 560px) {
+    body {
+      padding: 10px 12px;
+      gap: 10px;
+    }
+
+    .stream-meta,
+    .btn-fs .kbd-tag {
+      display: none;
+    }
+
+    .control-bar {
+      gap: 8px;
+    }
+
+    .btn {
+      flex: 1 1 auto;
+      padding: 0 14px;
+      font-size: 13.5px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 </style>
 </head>
 <body>
+
+<header class="broadcast-bar" aria-label="Stream header">
+  <div class="channel-id">
+    <span class="live-pill"><span class="live-dot" aria-hidden="true"></span>LIVE</span>
+    <h1 class="channel-title">Fox Sports 1 (USA)</h1>
+  </div>
+  <span class="stream-meta">CH • DIRECT FEED</span>
+</header>
 
 <div class="player" id="player">
   <div class="stage" id="stage">
@@ -70,7 +650,7 @@
          - allowfullscreen is left out on purpose: the player's own fullscreen button is
            disabled, so viewers use the Fullscreen button below and the logo + marquee stay visible.
            To unlock the player's own fullscreen, add the word  allowfullscreen  to the iframe. -->
-<iframe src="https://dlive.sx/cast/stream-39.php" width="100%" height="100%" style="border:0;" allow="autoplay; encrypted-media; picture-in-picture"></iframe>
+<iframe src="https://thedaddy.pk/cast/stream-39.php" width="100%" height="100%" style="border:0;" allow="autoplay; encrypted-media; picture-in-picture"></iframe>
     <!-- ============ PASTE YOUR IFRAME ABOVE THIS LINE ============ -->
 
     <!-- Logo is served from this repo (same origin as the page) -->
@@ -80,7 +660,52 @@
   <div class="marquee" aria-label="WhatsApp channel"><div class="track" id="track"></div></div>
 </div>
 
-<button id="fsBtn" type="button">Fullscreen</button>
+<div class="control-bar">
+  <a class="btn btn-whatsapp" id="waPersistentBtn" href="https://whatsapp.com/channel/0029VaEQJcJEVccLFGqfTo0w" target="_blank" rel="noopener noreferrer">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm5.77 14.07c-.24.68-1.41 1.3-1.95 1.38-.5.08-1.13.11-1.82-.11-.42-.13-.96-.31-1.65-.61-2.9-1.25-4.79-4.17-4.94-4.36-.14-.19-1.18-1.57-1.18-2.99 0-1.42.74-2.12 1.01-2.41.26-.29.58-.36.77-.36.19 0 .38.01.55.01.18 0 .41-.07.64.49.24.58.82 2 .89 2.14.07.14.12.31.02.5-.1.19-.14.31-.29.48-.14.17-.3.38-.43.51-.14.14-.29.3-.13.58.17.29.75 1.23 1.61 2 .89.79 1.65 1.04 1.93 1.18.29.14.46.12.63-.07.17-.19.72-.84.91-1.13.19-.29.38-.24.65-.14.26.1 1.68.79 1.97.94.29.14.48.22.55.34.07.12.07.7-.17 1.38z"/>
+    </svg>
+    <span>Join WhatsApp Channel</span>
+  </a>
+
+  <button class="btn btn-fs" id="fsBtn" type="button">
+    <svg id="fsIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+    </svg>
+    <span id="fsLabel">Fullscreen</span>
+    <span class="kbd-tag" aria-hidden="true">DBL-CLICK</span>
+  </button>
+</div>
+
+<!-- Non-blocking WhatsApp Channel Join Modal -->
+<div class="modal-backdrop" id="waModal" role="dialog" aria-modal="true" aria-labelledby="waModalTitle" aria-describedby="waModalDesc" aria-hidden="true">
+  <div class="modal-card">
+    <button class="modal-close" id="waCloseBtn" type="button" aria-label="Close popup">
+      <span class="modal-close-pill">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </span>
+    </button>
+
+    <div class="modal-icon-wrap" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm5.77 14.07c-.24.68-1.41 1.3-1.95 1.38-.5.08-1.13.11-1.82-.11-.42-.13-.96-.31-1.65-.61-2.9-1.25-4.79-4.17-4.94-4.36-.14-.19-1.18-1.57-1.18-2.99 0-1.42.74-2.12 1.01-2.41.26-.29.58-.36.77-.36.19 0 .38.01.55.01.18 0 .41-.07.64.49.24.58.82 2 .89 2.14.07.14.12.31.02.5-.1.19-.14.31-.29.48-.14.17-.3.38-.43.51-.14.14-.29.3-.13.58.17.29.75 1.23 1.61 2 .89.79 1.65 1.04 1.93 1.18.29.14.46.12.63-.07.17-.19.72-.84.91-1.13.19-.29.38-.24.65-.14.26.1 1.68.79 1.97.94.29.14.48.22.55.34.07.12.07.7-.17 1.38z"/>
+      </svg>
+    </div>
+
+    <span class="modal-eyebrow">Live Broadcast Alerts</span>
+    <h2 class="modal-title" id="waModalTitle">Never Miss Kickoff</h2>
+    <p class="modal-copy" id="waModalDesc">Get instant match links and backup stream updates on our official WhatsApp channel.</p>
+
+    <a class="modal-cta" id="waJoinBtn" href="https://whatsapp.com/channel/0029VaEQJcJEVccLFGqfTo0w" target="_blank" rel="noopener noreferrer">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm5.77 14.07c-.24.68-1.41 1.3-1.95 1.38-.5.08-1.13.11-1.82-.11-.42-.13-.96-.31-1.65-.61-2.9-1.25-4.79-4.17-4.94-4.36-.14-.19-1.18-1.57-1.18-2.99 0-1.42.74-2.12 1.01-2.41.26-.29.58-.36.77-.36.19 0 .38.01.55.01.18 0 .41-.07.64.49.24.58.82 2 .89 2.14.07.14.12.31.02.5-.1.19-.14.31-.29.48-.14.17-.3.38-.43.51-.14.14-.29.3-.13.58.17.29.75 1.23 1.61 2 .89.79 1.65 1.04 1.93 1.18.29.14.46.12.63-.07.17-.19.72-.84.91-1.13.19-.29.38-.24.65-.14.26.1 1.68.79 1.97.94.29.14.48.22.55.34.07.12.07.7-.17 1.38z"/>
+      </svg>
+      <span>Join Channel</span>
+    </a>
+
+    <button class="modal-later" id="waLaterBtn" type="button">Maybe later</button>
+  </div>
+</div>
 
 <script>
   /* ---------- Edit these ---------- */
@@ -88,33 +713,106 @@
   const CHANNEL_TEXT = "Join our WhatsApp channel for live updates";
   /* -------------------------------- */
 
-  const player = document.getElementById("player");
-  const stage  = document.getElementById("stage");
-  const fsBtn  = document.getElementById("fsBtn");
+  const player          = document.getElementById("player");
+  const stage           = document.getElementById("stage");
+  const fsBtn           = document.getElementById("fsBtn");
+  const fsLabel         = document.getElementById("fsLabel");
+  const fsIcon          = document.getElementById("fsIcon");
+  const waPersistentBtn = document.getElementById("waPersistentBtn");
+  const waModal         = document.getElementById("waModal");
+  const waJoinBtn       = document.getElementById("waJoinBtn");
+  const waCloseBtn      = document.getElementById("waCloseBtn");
+  const waLaterBtn      = document.getElementById("waLaterBtn");
+
+  /* Keep dynamic channel URL synced across all CTAs */
+  waPersistentBtn.href = CHANNEL_URL;
+  waJoinBtn.href       = CHANNEL_URL;
 
   /* Marquee: two identical halves so the loop is seamless (built in one pass) */
   const link = `<a href="${CHANNEL_URL}" target="_blank" rel="noopener noreferrer">${CHANNEL_TEXT}</a>`;
   const hiddenLink = link.replace("<a ", '<a aria-hidden="true" tabindex="-1" ');
   document.getElementById("track").innerHTML = link.repeat(6) + hiddenLink.repeat(6);
 
-  const inFs = () => document.fullscreenElement === player || player.classList.contains("pseudo-fs");
-  function syncLabel() { fsBtn.textContent = inFs() ? "Exit fullscreen" : "Fullscreen"; }
+  /* Fullscreen detection & state sync (Standard + WebKit + iOS pseudo-fs) */
+  const getFsElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+  const inFs = () => Boolean(getFsElement()) || player.classList.contains("pseudo-fs");
+
+  function syncLabel() {
+    const active = inFs();
+    fsLabel.textContent = active ? "Exit fullscreen" : "Fullscreen";
+    fsIcon.innerHTML = active
+      ? '<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>'
+      : '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>';
+
+    /* Hide persistent WhatsApp button in fullscreen & restore on exit */
+    document.body.classList.toggle("is-fullscreen", active);
+    waPersistentBtn.hidden = active;
+  }
+
   function toggleFs() {
     if (inFs()) {
-      if (document.fullscreenElement) document.exitFullscreen();
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
       player.classList.remove("pseudo-fs");
     } else if (player.requestFullscreen) {
       player.requestFullscreen().catch(() => player.classList.add("pseudo-fs"));
+    } else if (player.webkitRequestFullscreen) {
+      try {
+        player.webkitRequestFullscreen();
+      } catch (e) {
+        player.classList.add("pseudo-fs");
+      }
     } else {
       player.classList.add("pseudo-fs");   // iPhone Safari fallback
     }
     setTimeout(syncLabel, 50);
   }
+
   fsBtn.addEventListener("click", toggleFs);
   stage.addEventListener("dblclick", toggleFs);
   document.addEventListener("fullscreenchange", syncLabel);
+  document.addEventListener("webkitfullscreenchange", syncLabel);
+
+  /* ---------- WhatsApp Join Popup Logic (Non-blocking) ---------- */
+  function openModal() {
+    waModal.classList.add("is-open");
+    waModal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeModal() {
+    if (!waModal.classList.contains("is-open")) return;
+    waModal.classList.remove("is-open");
+    waModal.setAttribute("aria-hidden", "true");
+  }
+
+  /* Schedule popup after initial paint so the iframe stream connection starts first */
+  requestAnimationFrame(() => {
+    setTimeout(openModal, 120);
+  });
+
+  waCloseBtn.addEventListener("click", closeModal);
+  waLaterBtn.addEventListener("click", closeModal);
+  waJoinBtn.addEventListener("click", () => {
+    setTimeout(closeModal, 60);
+  });
+  waModal.addEventListener("click", e => {
+    if (e.target === waModal) closeModal();
+  });
+
   document.addEventListener("keydown", e => {
-    if (e.key === "Escape" && player.classList.contains("pseudo-fs")) { player.classList.remove("pseudo-fs"); syncLabel(); }
+    if (e.key === "Escape") {
+      if (waModal.classList.contains("is-open")) {
+        closeModal();
+        return;
+      }
+      if (player.classList.contains("pseudo-fs")) {
+        player.classList.remove("pseudo-fs");
+        syncLabel();
+      }
+    }
   });
 </script>
 </body>

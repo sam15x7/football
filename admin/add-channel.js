@@ -13,7 +13,7 @@
  *
  * Usage:
  *   node admin/add-channel.js <name> --url https://.../stream.php [options]
- *   node admin/add-channel.js skynewsitaly --url https://dlive.sx/cast/stream-123.php \
+ *   node admin/add-channel.js skynewsitaly --url https://thedaddy.pk/cast/stream-123.php \
  *        --title "Sky TG24 (Italy)" --name "Sky TG24 (Italy)"
  *
  * Options:
@@ -38,7 +38,7 @@ async function main() {
   const rawName = opts._[0];
   if (!rawName) {
     lib.fail('Missing channel name.\n\n  Usage: node admin/add-channel.js <name> --url <stream-url>\n' +
-             '  Example: node admin/add-channel.js espn4argentina --url https://dlive.sx/cast/stream-900.php --name "ESPN 4 (Argentina)"');
+             '  Example: node admin/add-channel.js espn4argentina --url https://thedaddy.pk/cast/stream-900.php --name "ESPN 4 (Argentina)"');
   }
   if (opts.url === undefined || opts.url === true) {
     lib.fail('Missing --url <stream-url>. Every channel page needs its iframe src.');
