@@ -85,7 +85,7 @@
     <label for="chName">Display name — e.g. ESPN 4 (Argentina)</label>
     <input id="chName" placeholder="ESPN 4 (Argentina)">
     <label for="chUrl">Stream URL (iframe src) — just paste it</label>
-    <input id="chUrl" placeholder="https://dlive.sx/cast/stream-900.php">
+    <input id="chUrl" placeholder="https://thedaddy.pk/cast/stream-900.php">
     <details style="margin-top:10px"><summary style="font-size:12px;color:var(--dim);cursor:pointer">Advanced (file name / tab title / preview)</summary>
       <div class="cfg">
         <div><label for="chFile">File name (auto from name)</label><input id="chFile" placeholder="espn4argentina.html"></div>
@@ -404,7 +404,7 @@ async function removeChannel(c) {
 
 /* ---------- preview built page in a new tab (blob, nothing uploaded) ---------- */
 function preview() {
-  const url = $('chUrl').value.trim() || 'https://dlive.sx/cast/stream-885.php';
+  const url = $('chUrl').value.trim() || 'https://thedaddy.pk/cast/stream-885.php';
   const title = $('chTitle').value.trim() || $('chName').value.trim() || 'Live';
   if (!TEMPLATE) return alert('Not unlocked yet — save your token first.');
   const page = TEMPLATE.replace('{{TITLE}}', esc(title)).replace('{{STREAM_URL}}', url);

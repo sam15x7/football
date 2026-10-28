@@ -43,7 +43,7 @@ came from it have been deleted from this repo:
   removed from `channels.json` and `index.html`
 
 Every remaining channel page uses its own direct stream embed (e.g.
-`https://dlive.sx/cast/stream-NNN.php`). Nothing in this repo calls or references
+`https://thedaddy.pk/cast/stream-NNN.php`). Nothing in this repo calls or references
 `streamed.pk` anymore.
 
 ### A. Local dashboard via tiny server (needs Node, no install steps)
@@ -134,7 +134,7 @@ admin/add-channel.js / remove-channel.js / sync-index.js
 ```bash
 # Add a channel (creates xyzchannel.html, registers it, regenerates index.html, pushes)
 node admin/add-channel.js espn4argentina \
-     --url https://dlive.sx/cast/stream-900.php \
+     --url https://thedaddy.pk/cast/stream-900.php \
      --name "ESPN 4 (Argentina)"
 # extras: --title <tab title>  --file <explicit.html>  --force  --no-push  --dry-run
 
