@@ -403,6 +403,14 @@
         "football"
       ],
       "region": "Netherlands"
+    },
+    {
+      "file": "tntsports.html",
+      "name": "TNT Sports",
+      "sport": [
+        "football"
+      ],
+      "region": "UK"
     }
   ]
 }
