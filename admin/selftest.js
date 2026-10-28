@@ -85,14 +85,14 @@ const res = (status, json) => ({ ok: status < 400, status, json: async () => jso
   const before = JSON.parse(files['channels.json']).channels.length;
   const NEWFILE = 'espn4(argentina).html';
   $('chName').value = 'ESPN 4 (Argentina)';
-  $('chUrl').value = 'https://dlive.sx/cast/stream-900.php';
+  $('chUrl').value = 'https://thedaddy.pk/cast/stream-900.php';
   $('addBtn').click();
   await new Promise(r => setTimeout(r, 900));
   assert(/Added|Updated/.test($('addStatus').textContent), 'add-channel succeeded: ' + $('addStatus').textContent);
   const ch = JSON.parse(files['channels.json']);
   assert(ch.channels.length === before + 1, 'channels.json gained entry');
   assert(!('owner' in ch) && !('repo' in ch), 'owner/repo stripped from public channels.json');
-  assert(files[NEWFILE] && files[NEWFILE].includes('https://dlive.sx/cast/stream-900.php'), 'new page committed with stream URL');
+  assert(files[NEWFILE] && files[NEWFILE].includes('https://thedaddy.pk/cast/stream-900.php'), 'new page committed with stream URL');
   assert(files['index.html'].includes('<a href="' + encodeURI(NEWFILE) + '">ESPN 4 (Argentina)</a>'), 'index.html regenerated with new card');
 
   // 5. Remove it again (click the .danger button — there is also an Edit button per row).
@@ -107,7 +107,7 @@ const res = (status, json) => ({ ok: status < 400, status, json: async () => jso
   assert(!files['index.html'].includes(NEWFILE), 'index.html regenerated without it');
 
   // 6. Preview builds locally, nothing uploaded.
-  $('chName').value = 'Test Preview'; $('chUrl').value = 'https://dlive.sx/cast/stream-885.php';
+  $('chName').value = 'Test Preview'; $('chUrl').value = 'https://thedaddy.pk/cast/stream-885.php';
   $('previewBtn').click();
   assert(true, 'preview ran without throwing');
 
