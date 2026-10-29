@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,7 +19,7 @@
       --bg-deck: #050507;
       --bg-bay: #0b0b0f;
       --surface-glass: rgba(24, 24, 30, 0.64);
-      --surface-glass-Subtle: rgba(20, 20, 26, 0.52);
+      --surface-glass-subtle: rgba(20, 20, 26, 0.52);
       --surface-hover: rgba(38, 38, 48, 0.78);
       --surface-active: rgba(50, 50, 62, 0.88);
       --surface-docked: rgba(16, 16, 22, 0.84);
@@ -90,7 +89,7 @@
     }
 
     /* ==========================================================================
-     * 1. @asset-animate Backdrop: Ken Burns Aura + Ambient Bokeh Particles
+     * 1. Backdrop: Ken Burns Aura + Ambient Bokeh Particles
      * ========================================================================== */
     #backdrop {
       position: fixed;
@@ -134,7 +133,7 @@
     }
 
     /* ==========================================================================
-     * 2. Hero + 3-Layer Parallax & Breathing/Floating Emblem (@asset-animate)
+     * 2. Hero + 3-Layer Parallax & Breathing/Floating Emblem
      * ========================================================================== */
     .hero {
       display: flex;
@@ -235,7 +234,7 @@
       border: 1px dashed rgba(212, 175, 55, 0.22);
     }
 
-    /* Parallax Layer 3: Foreground Still Image with Float + Breathe (@asset-animate) */
+    /* Parallax Layer 3: Foreground Still Image with Float + Breathe */
     .emblem .parallax {
       width: 74%;
       height: 74%;
@@ -320,9 +319,6 @@
       pointer-events: auto;
       max-width: 68rem;
       margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      gap: 0.625rem;
     }
 
     .bar-row {
@@ -547,6 +543,68 @@
       white-space: nowrap;
     }
 
+    /* Pinned Filter Toggle Button */
+    .pin-filter-btn {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4375rem;
+      min-height: 3.125rem;
+      padding: 0 0.9375rem;
+      border-radius: 999px;
+      border: 1px solid var(--border-hairline);
+      border-top-color: var(--specular-top);
+      background: var(--surface-glass);
+      color: var(--text-secondary);
+      font: 600 0.84375rem/1 var(--font-sans);
+      cursor: pointer;
+      white-space: nowrap;
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      backdrop-filter: blur(24px) saturate(180%);
+      box-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.55);
+      transition:
+        transform 120ms ease-out,
+        background-color 180ms ease,
+        border-color 180ms ease,
+        color 180ms ease;
+    }
+
+    .pin-filter-btn svg {
+      width: 0.95rem;
+      height: 0.95rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .pin-filter-btn:hover {
+      color: var(--text-primary);
+      background: var(--surface-hover);
+    }
+
+    .pin-filter-btn:active {
+      transform: scale(0.96);
+    }
+
+    .pin-filter-btn[aria-pressed="true"] {
+      background: rgba(212, 175, 55, 0.18);
+      border-color: var(--gold-border);
+      color: var(--gold-hi);
+    }
+
+    .pin-filter-btn[aria-pressed="true"] svg {
+      fill: var(--gold);
+      stroke: var(--gold);
+    }
+
+    .pin-filter-count {
+      font: 600 0.72rem/1 var(--font-mono);
+      opacity: 0.8;
+    }
+
     /* HIG Prominent Action Button: "Tune Random" (min 44px height, explicit verb label) */
     .action-btn {
       flex: none;
@@ -599,89 +657,24 @@
       transform: scale(0.96);
     }
 
-    /* ---------- Secondary Filter & View Switcher Row (Apple Segmented Controls) ---------- */
-    .filter-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-    }
-
-    .region-track {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      align-items: center;
-      gap: 0.375rem;
-      overflow-x: auto;
-      scrollbar-width: none;
-      padding: 0.125rem 0;
-    }
-
-    .region-track::-webkit-scrollbar {
-      display: none;
-    }
-
-    /* HIG Segmented Pill Buttons: 44px touch height */
-    .seg-pill {
-      flex: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      min-height: 2.75rem;
-      padding: 0 0.875rem;
-      border-radius: 999px;
-      border: 1px solid var(--border-hairline);
-      background: var(--surface-glass-Subtle);
-      color: var(--text-secondary);
-      font: 600 0.8125rem/1 var(--font-sans);
-      cursor: pointer;
-      white-space: nowrap;
-      -webkit-backdrop-filter: blur(18px);
-      backdrop-filter: blur(18px);
-      transition:
-        transform 100ms ease-out,
-        background-color 160ms ease,
-        color 160ms ease,
-        border-color 160ms ease;
-    }
-
-    .seg-pill:hover {
-      color: var(--text-primary);
-      background: var(--surface-hover);
-    }
-
-    .seg-pill:active {
-      transform: scale(0.96);
-    }
-
-    .seg-pill[aria-pressed="true"] {
-      background: rgba(212, 175, 55, 0.18);
-      border-color: var(--gold-border);
-      color: var(--gold-hi);
-      box-shadow: inset 0 1px 0 rgba(246, 226, 148, 0.25);
-    }
-
-    .seg-pill-count {
-      font: 500 0.6875rem/1 var(--font-mono);
-      opacity: 0.72;
-    }
-
     .view-toggle {
       flex: none;
       display: inline-flex;
       align-items: center;
-      padding: 0.1875rem;
+      min-height: 3.125rem;
+      padding: 0.25rem;
       border-radius: 999px;
-      background: var(--surface-glass-Subtle);
+      background: var(--surface-glass);
       border: 1px solid var(--border-hairline);
-      -webkit-backdrop-filter: blur(18px);
-      backdrop-filter: blur(18px);
+      border-top-color: var(--specular-top);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      backdrop-filter: blur(24px) saturate(180%);
+      box-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.55);
     }
 
     .view-btn {
-      width: 2.5rem;
-      height: 2.375rem;
+      width: 2.625rem;
+      height: 2.625rem;
       border-radius: 999px;
       border: 0;
       background: transparent;
@@ -712,63 +705,551 @@
     }
 
     /* ==========================================================================
-     * 4. Channel Cards (<nav class="grid" id="channels">
-  <div class="card" data-region="uae"><a href="abudhabisports1uae.html" data-region="uae">Abu Dhabi Sports 1 UAE</a></div>
-  <div class="card" data-sport="mls,football"><a href="appletv.html" data-sport="mls,football">Apple TV</a></div>
-  <div class="card" data-sport="football,badminton"><a href="astrosupersport2.html" data-sport="football,badminton">Astro SuperSport 2</a></div>
-  <div class="card" data-sport="football" data-region="mena"><a href="beinsportsmena1.html" data-sport="football" data-region="mena">beIN Sports MENA 1</a></div>
-  <div class="card" data-sport="football" data-region="mena"><a href="beinsportsmena2(eng).html" data-sport="football" data-region="mena">beIN Sports MENA 2 (English)</a></div>
-  <div class="card" data-sport="football" data-region="mena"><a href="beinsportsmena3.html" data-sport="football" data-region="mena">beIN Sports MENA 3</a></div>
-  <div class="card" data-sport="football,mma" data-region="usa"><a href="beinsportsusa.html" data-sport="football,mma" data-region="usa">beIN Sports USA</a></div>
-  <div class="card" data-sport="football" data-region="netherlands"><a href="daznlaliga.html" data-sport="football" data-region="netherlands">Dazn LaLiga</a></div>
-  <div class="card" data-sport="football" data-region="poland"><a href="elevensports3poland.html" data-sport="football" data-region="poland">Eleven Sports 3 Poland</a></div>
-  <div class="card" data-sport="football,basketball,mlb" data-region="usa"><a href="espn2usa.html" data-sport="football,basketball,mlb" data-region="usa">ESPN 2 USA</a></div>
-  <div class="card" data-sport="college football,basketball"><a href="espnu.html" data-sport="college football,basketball">ESPN U</a></div>
-  <div class="card" data-sport="football,basketball,ufc" data-region="usa"><a href="espnusa.html" data-sport="football,basketball,ufc" data-region="usa">ESPN USA</a></div>
-  <div class="card" data-sport="football,boxing"><a href="foxdeportes.html" data-sport="football,boxing">Fox Deportes</a></div>
-  <div class="card" data-sport="football"><a href="foxsoccerplus.html" data-sport="football">Fox Soccer Plus</a></div>
-  <div class="card" data-sport="nfl,college football,mma" data-region="usa"><a href="foxsports1usa.html" data-sport="nfl,college football,mma" data-region="usa">Fox Sports 1 (USA)</a></div>
-  <div class="card" data-sport="nascar,football,field hockey" data-region="usa"><a href="foxsports2usa.html" data-sport="nascar,football,field hockey" data-region="usa">Fox Sports 2 (USA)</a></div>
-  <div class="card" data-sport="football,horse racing" data-region="uk"><a href="itv1uk.html" data-sport="football,horse racing" data-region="uk">ITV 1 (UK)</a></div>
-  <div class="card" data-sport="tennis,rugby" data-region="uk"><a href="itv2uk.html" data-sport="tennis,rugby" data-region="uk">ITV 2 (UK)</a></div>
-  <div class="card" data-sport="football,horse racing" data-region="uk"><a href="itv3uk.html" data-sport="football,horse racing" data-region="uk">ITV 3 (UK)</a></div>
-  <div class="card" data-sport="football" data-region="uk"><a href="laligatvuk.html" data-sport="football" data-region="uk">LaLiga TV UK</a></div>
-  <div class="card" data-sport="football,rugby" data-region="france"><a href="ligue13france.html" data-sport="football,rugby" data-region="france">Ligue1+ 3 France</a></div>
-  <div class="card" data-sport="football,volleyball" data-region="bulgaria"><a href="maxsport1bulgaria.html" data-sport="football,volleyball" data-region="bulgaria">Max Sport 1 Bulgaria</a></div>
-  <div class="card" data-sport="football"><a href="movistarligadecampeones.html" data-sport="football">Movistar Liga De Campeones</a></div>
-  <div class="card" data-sport="football,hockey" data-region="slovakia"><a href="novasport3sk.html" data-sport="football,hockey" data-region="slovakia">Nova Sport 3 SK</a></div>
-  <div class="card" data-sport="football,basketball"><a href="novasportsstart.html" data-sport="football,basketball">Nova Sports Start</a></div>
-  <div class="card" data-sport="gaelic games,horse racing" data-region="ireland"><a href="premiersportsireland2.html" data-sport="gaelic games,horse racing" data-region="ireland">Premier Sports Ireland 2</a></div>
-  <div class="card" data-sport="football" data-region="italy"><a href="skysportcalcioitaly.html" data-sport="football" data-region="italy">Sky Sport Calcio (Italy)</a></div>
-  <div class="card" data-sport="motorsport,f1" data-region="uk"><a href="skysportsf1uk.html" data-sport="motorsport,f1" data-region="uk">Sky Sports F1 UK</a></div>
-  <div class="card" data-sport="cricket,tennis"><a href="sonyten1.html" data-sport="cricket,tennis">Sony TEN 1</a></div>
-  <div class="card" data-sport="tennis,badminton,football"><a href="sonyten2.html" data-sport="tennis,badminton,football">Sony TEN 2</a></div>
-  <div class="card" data-sport="football,basketball,tennis" data-region="israel"><a href="sport5israel.html" data-sport="football,basketball,tennis" data-region="israel">Sport 5 (Israel)</a></div>
-  <div class="card" data-sport="football,basketball,tennis" data-region="israel"><a href="sport5plusisrael.html" data-sport="football,basketball,tennis" data-region="israel">Sport 5 Plus Israel</a></div>
-  <div class="card" data-sport="football"><a href="sporttv1.html" data-sport="football">Sport TV 1</a></div>
-  <div class="card" data-sport="football"><a href="sporttv2.html" data-sport="football">Sport TV 2</a></div>
-  <div class="card" data-sport="football,motorsport"><a href="sporttv3.html" data-sport="football,motorsport">Sport TV 3</a></div>
-  <div class="card" data-sport="football,cycling"><a href="sporttv4.html" data-sport="football,cycling">Sport TV 4</a></div>
-  <div class="card" data-sport="football,basketball"><a href="sporttv5.html" data-sport="football,basketball">Sport TV 5</a></div>
-  <div class="card" data-sport="football,combat sports"><a href="sporttv6.html" data-sport="football,combat sports">Sport TV 6</a></div>
-  <div class="card" data-sport="football,volleyball" data-region="brazil"><a href="sportvbrasil.html" data-sport="football,volleyball" data-region="brazil">SporTV (Brazil)</a></div>
-  <div class="card" data-sport="football"><a href="supersportpremierleague.html" data-sport="football">Super Sport Premier League</a></div>
-  <div class="card" data-sport="football"><a href="supersportlaliga.html" data-sport="football">SuperSport LaLiga</a></div>
-  <div class="card" data-sport="football,boxing" data-region="argentina"><a href="telefeargentina.html" data-sport="football,boxing" data-region="argentina">Telefe Argentina</a></div>
-  <div class="card" data-sport="football" data-region="france"><a href="tf1france.html" data-sport="football" data-region="france">TF1 (France)</a></div>
-  <div class="card" data-sport="football" data-region="uk"><a href="tntsports.html" data-sport="football" data-region="uk">TNT Sports</a></div>
-  <div class="card" data-sport="football" data-region="uk"><a href="tntsports2uk.html" data-sport="football" data-region="uk">TNT Sports 2 UK</a></div>
-  <div class="card" data-sport="football" data-region="uk"><a href="tntsports3uk.html" data-sport="football" data-region="uk">TNT Sports 3 UK</a></div>
-  <div class="card" data-sport="football,handball" data-region="denmark"><a href="tv3sportdenmark.html" data-sport="football,handball" data-region="denmark">TV 3 Sport Denmark</a></div>
-  <div class="card" data-sport="football,basketball" data-region="argentina"><a href="tycsportsargentina.html" data-sport="football,basketball" data-region="argentina">TyC Sports (Argentina)</a></div>
-  <div class="card" data-sport="football,darts" data-region="uk"><a href="viaplaysports2uk.html" data-sport="football,darts" data-region="uk">Viaplay Sports 2 (UK)</a></div>
-  <div class="card" data-sport="football" data-region="germany"><a href="ZDFDE.html" data-sport="football" data-region="germany">ZDF (Germany)</a></div>
-  <div class="card" data-sport="football" data-region="netherlands"><a href="ziggosportnl.html" data-sport="football" data-region="netherlands">Ziggo Sport (NL)</a></div>
+     * 4. Channel Cards (<nav class="grid" id="channels">)
+     * ========================================================================== */
+    nav.grid {
+      max-width: 68rem;
+      margin: 1rem auto 0;
+      padding: 0 1rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr));
+      gap: 0.875rem;
+    }
+
+    nav.grid.compact-view {
+      grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+      gap: 0.5625rem;
+    }
+
+    nav.grid a {
+      --tx: 0px;
+      --ty: 0px;
+      --sc: 1;
+      --spot-x: 50%;
+      --spot-y: 50%;
+      --spot-a: 0;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 0.875rem;
+      min-height: 6.5rem;
+      padding: 1rem 1rem 0.9375rem 1.125rem;
+      border-radius: 1.125rem;
+      color: var(--text-primary);
+      text-decoration: none;
+      word-break: break-word;
+      font: 600 1.0625rem/1.24 var(--font-sans);
+      letter-spacing: -0.012em;
+      border: 1px solid var(--border-hairline);
+      border-top-color: var(--specular-top);
+      background:
+        radial-gradient(15rem circle at var(--spot-x) var(--spot-y), rgba(212, 175, 55, calc(var(--spot-a) * 0.17)), transparent 70%),
+        var(--surface-glass);
+      -webkit-backdrop-filter: blur(18px) saturate(165%);
+      backdrop-filter: blur(18px) saturate(165%);
+      box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.48);
+      transform: translate3d(var(--tx), var(--ty), 0) scale(var(--sc));
+      transition:
+        background-color 180ms ease,
+        border-color 180ms ease,
+        box-shadow 220ms ease;
+      will-change: transform;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    nav.grid.compact-view a {
+      flex-direction: row;
+      align-items: center;
+      min-height: 4rem;
+      padding: 0.625rem 0.875rem 0.625rem 1rem;
+      border-radius: 0.875rem;
+    }
+
+    /* Card Internal Telemetry Structure (injected progressively) */
+    .ch-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      width: 100%;
+    }
+
+    nav.grid.compact-view .ch-top {
+      width: auto;
+      flex: none;
+    }
+
+    .ch-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4375rem;
+    }
+
+    .ch-num {
+      font: 600 0.72rem/1 var(--font-mono);
+      color: var(--text-tertiary);
+      letter-spacing: 0.04em;
+    }
+
+    /* HIG Pin Button inside Card (44x44px hit region via negative margin) */
+    .pin-btn {
+      position: relative;
+      z-index: 2;
+      width: 2.75rem;
+      height: 2.75rem;
+      margin: -0.625rem -0.5rem -0.625rem 0;
+      border: 0;
+      background: transparent;
+      color: var(--text-tertiary);
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: color 150ms ease, transform 120ms ease;
+    }
+
+    nav.grid.compact-view .pin-btn {
+      display: none;
+    }
+
+    .pin-btn:hover {
+      color: var(--gold-hi);
+    }
+
+    .pin-btn:active {
+      transform: scale(0.86);
+    }
+
+    .pin-btn[aria-pressed="true"] {
+      color: var(--gold);
+    }
+
+    .pin-btn svg {
+      width: 0.95rem;
+      height: 0.95rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .pin-btn[aria-pressed="true"] svg {
+      fill: var(--gold);
+    }
+
+    .ch-bottom {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    nav.grid.compact-view .ch-bottom {
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .ch-title {
+      flex: 1;
+      min-width: 0;
+      font: 600 1.0625rem/1.22 var(--font-sans);
+      color: var(--text-primary);
+      letter-spacing: -0.014em;
+    }
+
+    nav.grid.compact-view .ch-title {
+      font-size: 0.96875rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ch-play {
+      flex: none;
+      width: 2.125rem;
+      height: 2.125rem;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.065);
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      display: grid;
+      place-items: center;
+      color: var(--text-primary);
+      transition:
+        background-color 180ms ease,
+        border-color 180ms ease,
+        color 180ms ease,
+        transform 220ms var(--ease-spring);
+    }
+
+    .ch-play svg {
+      width: 0.875rem;
+      height: 0.875rem;
+      fill: currentColor;
+      transform: translateX(1px);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      nav.grid a:hover {
+        background-color: var(--surface-hover);
+        border-color: var(--gold-border);
+        box-shadow: 0 14px 32px -12px rgba(0, 0, 0, 0.72);
+      }
+
+      nav.grid a:hover .ch-play {
+        background-color: var(--gold);
+        border-color: var(--gold-hi);
+        color: #050507;
+        transform: scale(1.07);
+      }
+    }
+
+    nav.grid a:active,
+    nav.grid a.is-pressed {
+      background-color: var(--surface-active);
+      border-color: var(--gold-hi);
+    }
+
+    nav.grid a:active .ch-play,
+    nav.grid a.is-pressed .ch-play {
+      background-color: var(--gold);
+      border-color: var(--gold-hi);
+      color: #050507;
+      transform: scale(0.94);
+    }
+
+    nav.grid a.hidden {
+      display: none;
+    }
+
+    /* ---------- Actionable Empty State ---------- */
+    .empty-card {
+      max-width: 28rem;
+      margin: 3rem auto 0;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      background: var(--surface-glass);
+      border: 1px solid var(--border-hairline);
+      border-top-color: var(--specular-top);
+      border-radius: 1.25rem;
+      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
+    }
+
+    .empty-title {
+      font: 600 1.0625rem/1.3 var(--font-sans);
+      color: var(--text-primary);
+    }
+
+    .empty-desc {
+      margin-top: 0.375rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .reset-btn {
+      margin-top: 1.125rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.75rem;
+      padding: 0 1.125rem;
+      border-radius: 999px;
+      border: 1px solid var(--gold-border);
+      background: var(--gold-surface);
+      color: var(--gold-hi);
+      font: 600 0.875rem/1 var(--font-sans);
+      cursor: pointer;
+      transition: transform 100ms ease, background-color 150ms ease;
+    }
+
+    .reset-btn:hover {
+      background: rgba(212, 175, 55, 0.24);
+    }
+
+    .reset-btn:active {
+      transform: scale(0.96);
+    }
+
+    .end {
+      height: max(4.5rem, calc(env(safe-area-inset-bottom) + 2.5rem));
+    }
+
+    /* ---------- Responsive Breakpoints ---------- */
+    @media (max-width: 640px) {
+      .action-btn span,
+      .pin-filter-label {
+        display: none;
+      }
+      .action-btn {
+        width: 3.125rem;
+        padding: 0;
+      }
+      .pin-filter-btn {
+        padding: 0 0.75rem;
+      }
+      .kbd-hint,
+      .view-toggle {
+        display: none;
+      }
+      nav.grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.625rem;
+        padding: 0 0.75rem;
+      }
+      nav.grid a {
+        min-height: 5.875rem;
+        padding: 0.875rem;
+        border-radius: 1rem;
+      }
+      .ch-title {
+        font-size: 0.9375rem;
+      }
+      .ch-play {
+        width: 1.875rem;
+        height: 1.875rem;
+      }
+    }
+
+    /* ---------- Keyframes ---------- */
+    @keyframes ken-burns {
+      0% {
+        transform: scale(1) translate3d(0, 0, 0);
+      }
+      100% {
+        transform: scale(1.12) translate3d(-2%, -1%, 0);
+      }
+    }
+
+    @keyframes breathe-life {
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.018);
+      }
+    }
+
+    @keyframes float-levitate {
+      0%, 100% {
+        transform: translate3d(0, 0, 0);
+      }
+      50% {
+        transform: translate3d(0, -7px, 0);
+      }
+    }
+
+    @keyframes live-pulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.45;
+        transform: scale(0.88);
+      }
+    }
+
+    /* ==========================================================================
+     * 5. Apple HIG Accessibility Overrides (Reduced Motion, Transparency, Contrast)
+     * ========================================================================== */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation: none !important;
+        transition: opacity 160ms ease, background-color 160ms ease, border-color 160ms ease !important;
+      }
+      html {
+        scroll-behavior: auto;
+      }
+      nav.grid a,
+      .emblem,
+      .emblem .halo,
+      .emblem .ring,
+      .emblem .parallax,
+      .mini {
+        transform: none !important;
+        filter: none !important;
+      }
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+      :root {
+        --surface-glass: #15151b;
+        --surface-glass-subtle: #121217;
+        --surface-hover: #1e1e26;
+        --surface-active: #282833;
+        --surface-docked: #181820;
+      }
+      .bar,
+      .emblem,
+      .action-btn,
+      .pin-filter-btn,
+      .view-toggle,
+      nav.grid a,
+      .empty-card {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+      }
+    }
+
+    @media (prefers-contrast: more) {
+      :root {
+        --border-hairline: rgba(255, 255, 255, 0.42);
+        --gold-border: #f6e294;
+        --text-secondary: rgba(255, 255, 255, 0.9);
+        --text-tertiary: rgba(255, 255, 255, 0.75);
+      }
+      nav.grid a,
+      .bar,
+      .pin-filter-btn,
+      .action-btn {
+        border-width: 1.5px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div id="backdrop" aria-hidden="true">
+  <div class="ken-burns-stage"></div>
+  <canvas id="fx"></canvas>
+  <div class="vignette"></div>
+</div>
+
+<div class="page">
+  <header class="hero">
+    <div class="telemetry-pill" aria-hidden="true">
+      <span class="live-dot"></span>
+      <span>Live Broadcast Directory</span>
+    </div>
+    <div class="emblem" id="emblem" title="Drag and flick">
+      <span class="halo"></span>
+      <span class="ring base"></span>
+      <span class="ring dash"></span>
+      <div class="parallax">
+        <div class="float-wrap">
+          <img class="logo" src="logo.webp" alt="" decoding="async" fetchpriority="high" onerror="document.documentElement.classList.add('nologo')">
+        </div>
+      </div>
+    </div>
+    <h1>The Predictor</h1>
+    <p class="tag">Live sports feeds. Select any channel below to launch its broadcast player.</p>
+  </header>
+
+  <!-- Channels are added from the backend only (see admin/README.md).
+       This page is public: it just renders the list — no forms, no tokens. -->
+  <div class="chrome-deck" id="chromeDeck">
+    <div class="bar-shell">
+      <div class="bar-row">
+        <div class="bar" id="bar">
+          <button class="mini" id="top" type="button" aria-label="Scroll to top">
+            <span class="mini-inner">
+              <img src="logo.webp" alt="" onerror="document.documentElement.classList.add('nologo')">
+            </span>
+          </button>
+          <div class="field">
+            <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+            <label for="q" class="sr">Search channels</label>
+            <input id="q" type="search" placeholder="Search channels…" autocomplete="off" spellcheck="false">
+            <button class="clear-btn" id="clearBtn" type="button" aria-label="Clear search query">
+              <span class="clear-btn-glyph">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>
+              </span>
+            </button>
+            <kbd class="kbd-hint" aria-hidden="true">/</kbd>
+          </div>
+          <span class="count" id="count" aria-live="polite"></span>
+        </div>
+
+        <button class="pin-filter-btn" id="pinnedFilterBtn" type="button" aria-pressed="false" aria-label="Show pinned channels" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <span class="pin-filter-label">Pinned</span>
+          <span class="pin-filter-count" id="pinnedCount">0</span>
+        </button>
+
+        <button class="action-btn" id="randomBtn" type="button" aria-label="Tune Random Channel">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>
+          </svg>
+          <span>Tune Random</span>
+        </button>
+
+        <div class="view-toggle" role="group" aria-label="Layout view">
+          <button class="view-btn" id="gridViewBtn" type="button" aria-pressed="true" aria-label="Grid view">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          </button>
+          <button class="view-btn" id="listViewBtn" type="button" aria-pressed="false" aria-label="Compact list view">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<nav class="grid" id="channels" aria-label="Channel list">
+  <a href="abudhabisports1uae.html">Abu Dhabi Sports 1 UAE</a>
+  <a href="appletv.html">Apple TV</a>
+  <a href="astrosupersport2.html">Astro SuperSport 2</a>
+  <a href="beinsportsmena1.html">beIN Sports MENA 1</a>
+  <a href="beinsportsmena2(eng).html">beIN Sports MENA 2 (English)</a>
+  <a href="beinsportsmena3.html">beIN Sports MENA 3</a>
+  <a href="beinsportsusa.html">beIN Sports USA</a>
+  <a href="daznlaliga.html">Dazn LaLiga</a>
+  <a href="diemasport3bulgaria.html">Diema Sport 3 Bulgaria</a>
+  <a href="elevensports3poland.html">Eleven Sports 3 Poland</a>
+  <a href="espn1nl.html">ESPN 1 NL</a>
+  <a href="espn2usa.html">ESPN 2 USA</a>
+  <a href="espnu.html">ESPN U</a>
+  <a href="espnusa.html">ESPN USA</a>
+  <a href="foxdeportes.html">Fox Deportes</a>
+  <a href="foxsoccerplus.html">Fox Soccer Plus</a>
+  <a href="foxsports1usa.html">Fox Sports 1 (USA)</a>
+  <a href="foxsports2usa.html">Fox Sports 2 (USA)</a>
+  <a href="itv1uk.html">ITV 1 (UK)</a>
+  <a href="itv2uk.html">ITV 2 (UK)</a>
+  <a href="itv3uk.html">ITV 3 (UK)</a>
+  <a href="laligatvuk.html">LaLiga TV UK</a>
+  <a href="ligue13france.html">Ligue1+ 3 France</a>
+  <a href="maxsport1bulgaria.html">Max Sport 1 Bulgaria</a>
+  <a href="movistarligadecampeones.html">Movistar Liga De Campeones</a>
+  <a href="novasport3sk.html">Nova Sport 3 SK</a>
+  <a href="novasportsstart.html">Nova Sports Start</a>
+  <a href="premiersportsireland2.html">Premier Sports Ireland 2</a>
+  <a href="skysportcalcioitaly.html">Sky Sport Calcio (Italy)</a>
+  <a href="skysportsf1uk.html">Sky Sports F1 UK</a>
+  <a href="sonyten1.html">Sony TEN 1</a>
+  <a href="sonyten2.html">Sony TEN 2</a>
+  <a href="sport1israel.html">Sport 1 Israel</a>
+  <a href="sport2israel.html">Sport 2 Israel</a>
+  <a href="sport5israel.html">Sport 5 (Israel)</a>
+  <a href="sport5plusisrael.html">Sport 5 Plus Israel</a>
+  <a href="sportklub1croatia.html">Sport Klub 1 Croatia</a>
+  <a href="sporttv1.html">Sport TV 1</a>
+  <a href="sporttv2.html">Sport TV 2</a>
+  <a href="sporttv3.html">Sport TV 3</a>
+  <a href="sporttv4.html">Sport TV 4</a>
+  <a href="sporttv5.html">Sport TV 5</a>
+  <a href="sporttv6.html">Sport TV 6</a>
+  <a href="sportvbrasil.html">SporTV (Brazil)</a>
+  <a href="supersportpremierleague.html">Super Sport Premier League</a>
+  <a href="supersportlaliga.html">SuperSport LaLiga</a>
+  <a href="telefeargentina.html">Telefe Argentina</a>
+  <a href="tf1france.html">TF1 (France)</a>
+  <a href="tv3sportdenmark.html">TV 3 Sport Denmark</a>
+  <a href="tycsportsargentina.html">TyC Sports (Argentina)</a>
+  <a href="viaplaysports2uk.html">Viaplay Sports 2 (UK)</a>
+  <a href="ZDFDE.html">ZDF (Germany)</a>
+  <a href="ziggosportnl.html">Ziggo Sport NL</a>
 </nav>
 
   <div class="empty-card" id="empty" hidden>
-    <p class="empty-title">No broadcast feeds match your filter</p>
-    <p class="empty-desc" id="emptyDesc">Try a broader channel name or switch back to all regions.</p>
+    <p class="empty-title">No broadcast feeds match your search</p>
+    <p class="empty-desc" id="emptyDesc">Try a broader channel name or clear your current search filter.</p>
     <button class="reset-btn" id="resetBtn" type="button">Show All Channels</button>
   </div>
   <div class="end"></div>
@@ -780,21 +1261,22 @@
   var links = Array.prototype.slice.call(document.querySelectorAll('#channels a'));
   var countEl = $('#count'), emptyEl = $('#empty'), queryEl = $('#q'), clearBtn = $('#clearBtn');
   var chromeDeck = $('#chromeDeck'), nav = $('#channels'), emblem = $('#emblem');
-  var regionTrack = $('#regionTrack'), randomBtn = $('#randomBtn'), resetBtn = $('#resetBtn');
+  var pinnedFilterBtn = $('#pinnedFilterBtn'), pinnedCountEl = $('#pinnedCount');
+  var randomBtn = $('#randomBtn'), resetBtn = $('#resetBtn');
   var gridViewBtn = $('#gridViewBtn'), listViewBtn = $('#listViewBtn');
-  var filterRowEl = document.querySelector('.filter-row');
-  var emptyDescEl = $('#emptyDesc');
 
   var mqlReduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   var REDUCED = mqlReduced.matches;
   mqlReduced.addEventListener('change', function (e) { REDUCED = e.matches; });
 
   /* ==========================================================================
-   * 1. Progressive Channel Metadata & Saved Pins Enrichment
+   * 1. Progressive Channel Numbering & Saved Pins Enrichment
    *    (Leaves original HTML <a> list untouched in source for backend scripts)
    * ========================================================================== */
   var STORAGE_KEY = 'predictor_pinned_channels_v1';
   var pinnedSet = new Set();
+  var onlyPinned = false;
+
   try {
     var saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
     if (Array.isArray(saved)) saved.forEach(function (h) { pinnedSet.add(h); });
@@ -806,104 +1288,27 @@
     } catch (e) {}
   }
 
-  function detectRegion(name, href) {
-    var s = (name + ' ' + href).toLowerCase();
-    if (/\b(uk|ireland|itv|skysportsf1uk|laligatvuk|viaplaysports2uk)\b/.test(s)) return { id: 'uk', code: 'UK & IE', group: 'UK & IE' };
-    if (/\b(usa|espn2usa|espnu|espnusa|fox|appletv)\b/.test(s)) return { id: 'usa', code: 'USA', group: 'USA' };
-    if (/\b(mena|uae|abudhabi|israel|astro|sonyten)\b/.test(s)) return { id: 'mena', code: 'MENA & ASIA', group: 'MENA & Asia' };
-    if (/\b(argentina|brasil|brazil|telefe|tyc|sportvbrasil)\b/.test(s)) return { id: 'latam', code: 'LATAM', group: 'Americas' };
-    return { id: 'eur', code: 'EUROPE', group: 'Europe' };
-  }
-
-  /* ---------- Sport Tag Model (mirrors admin/lib.js SPORT_ALIASES) ---------- */
-  var SPORT_ALIASES = {
-    'soccer': 'football', 'association football': 'football',
-    'basket': 'basketball', 'basket ball': 'basketball',
-    'ice hockey': 'hockey',
-    'auto racing': 'motorsport', 'motor racing': 'motorsport', 'racing': 'motorsport',
-    'formula 1': 'f1', 'formula-one': 'f1',
-    'american football': 'nfl', 'nfl football': 'nfl',
-    'mixed martial arts': 'mma',
-    'olympic sports': 'olympics',
-    'sports': '', 'sport': ''
-  };
-
-  function normSportTag(raw) {
-    var s0 = String(raw == null ? '' : raw).trim().toLowerCase().replace(/\s+/g, ' ');
-    if (!s0) return '';
-    return Object.prototype.hasOwnProperty.call(SPORT_ALIASES, s0) ? SPORT_ALIASES[s0] : s0;
-  }
-
-  // Read canonical sport tags from data-sport (generated from channels.json).
-  function getSports(a) {
-    var raw = a.getAttribute('data-sport') || '';
-    var out = [];
-    raw.split(/[,;]/).forEach(function (t) {
-      var n = normSportTag(t);
-      if (n && out.indexOf(n) === -1) out.push(n);
-    });
-    return out;
-  }
-
-  var SPORT_LABELS = {
-    'football': 'Football', 'mls': 'MLS', 'college football': 'College FB', 'nfl': 'NFL',
-    'basketball': 'Basketball', 'tennis': 'Tennis', 'cricket': 'Cricket', 'badminton': 'Badminton',
-    'ufc': 'UFC', 'mma': 'MMA', 'boxing': 'Boxing', 'combat sports': 'Combat',
-    'motorsport': 'Motorsport', 'f1': 'F1', 'nascar': 'NASCAR',
-    'horse racing': 'Horse Racing', 'volleyball': 'Volleyball', 'hockey': 'Hockey',
-    'handball': 'Handball', 'rugby': 'Rugby', 'cycling': 'Cycling', 'darts': 'Darts',
-    'field hockey': 'Field Hockey', 'gaelic games': 'Gaelic', 'baseball': 'Baseball', 'mlb': 'MLB', 'olympics': 'Olympics'
-  };
-
-  function sportLabel(tag) {
-    if (SPORT_LABELS[tag]) return SPORT_LABELS[tag];
-    return tag.replace(/\b[a-z]/g, function (ch) { return ch.toUpperCase(); });
-  }
-
-  var activeSport = 'All';
-  var allSportTags = [];
-  links.forEach(function (a) {
-    getSports(a).forEach(function (t) {
-      if (allSportTags.indexOf(t) === -1) allSportTags.push(t);
-    });
-  });
-  allSportTags.sort();
-  var hasFootball = allSportTags.indexOf('football') > -1;
-
   links.forEach(function (a, idx) {
     var rawTitle = a.textContent.trim();
     var href = a.getAttribute('href') || '';
-    var region = detectRegion(rawTitle, href);
-    var sports = getSports(a);
     var num = String(idx + 1).padStart(2, '0');
 
     a.dataset.title = rawTitle;
-    a.dataset.region = region.group;
-    a.dataset.sports = sports.join(',');
-    a.dataset.hay = (rawTitle + ' ' + href + ' ' + region.code + ' ch' + num + ' ' + sports.join(' ')).toLowerCase();
+    a.dataset.hay = (rawTitle + ' ' + href + ' ch' + num).toLowerCase();
 
     var isPinned = pinnedSet.has(href);
-
-    var tagChips = sports.map(function (t) {
-      return '<span class="ch-tag' + (t === 'football' ? ' ch-tag-football' : '') + '">' +
-             sportLabel(t).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span>';
-    }).join('');
 
     a.innerHTML =
       '<div class="ch-top">' +
         '<div class="ch-meta">' +
           '<span class="ch-num">CH ' + num + '</span>' +
-          '<span class="ch-region">' + region.code + '</span>' +
         '</div>' +
         '<button type="button" class="pin-btn" aria-pressed="' + (isPinned ? 'true' : 'false') + '" aria-label="Pin ' + rawTitle.replace(/"/g, '&quot;') + '">' +
           '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>' +
         '</button>' +
       '</div>' +
       '<div class="ch-bottom">' +
-        '<div class="ch-text">' +
-          '<span class="ch-title"></span>' +
-          (tagChips ? '<div class="ch-tags" role="list" aria-label="Sports">' + tagChips + '</div>' : '') +
-        '</div>' +
+        '<span class="ch-title"></span>' +
         '<span class="ch-play" aria-hidden="true">' +
           '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>' +
         '</span>' +
@@ -912,80 +1317,17 @@
     a.querySelector('.ch-title').textContent = rawTitle;
   });
 
-  /* ---------- Build Segmented Region Filter Bar ---------- */
-  var activeRegion = 'All';
-  var regionGroups = ['All', 'Pinned', 'UK & IE', 'USA', 'Europe', 'MENA & Asia', 'Americas'];
-
-  function renderRegionPills() {
-    regionTrack.innerHTML = '';
-    regionGroups.forEach(function (group) {
-      var count = 0;
-      if (group === 'All') {
-        count = links.length;
-      } else if (group === 'Pinned') {
-        count = links.filter(function (a) { return pinnedSet.has(a.getAttribute('href')); }).length;
-        if (count === 0 && activeRegion !== 'Pinned') return;
-      } else {
-        count = links.filter(function (a) { return a.dataset.region === group; }).length;
-      }
-
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'seg-pill';
-      btn.setAttribute('aria-pressed', activeRegion === group ? 'true' : 'false');
-      btn.innerHTML = '<span>' + group + '</span><span class="seg-pill-count">' + count + '</span>';
-      btn.addEventListener('click', function () {
-        activeRegion = group;
-        renderRegionPills();
-        applyFilter();
-      });
-      regionTrack.appendChild(btn);
-    });
+  function syncPinnedUI() {
+    var pinTotal = links.filter(function (a) { return pinnedSet.has(a.getAttribute('href')); }).length;
+    pinnedCountEl.textContent = pinTotal;
+    if (pinTotal === 0 && onlyPinned) {
+      onlyPinned = false;
+    }
+    pinnedFilterBtn.hidden = pinTotal === 0;
+    pinnedFilterBtn.setAttribute('aria-pressed', onlyPinned ? 'true' : 'false');
   }
 
-  /* ---------- Build Segmented Sport Filter Bar (Football first) ---------- */
-  var sportTrack = document.createElement('div');
-  sportTrack.className = 'region-track sport-track';
-  sportTrack.id = 'sportTrack';
-  sportTrack.setAttribute('role', 'toolbar');
-  sportTrack.setAttribute('aria-label', 'Filter channels by sport');
-  if (filterRowEl && hasFootball) filterRowEl.parentNode.insertBefore(sportTrack, filterRowEl);
-
-  function renderSportPills() {
-    if (!hasFootball) return;
-    sportTrack.innerHTML = '';
-    var groups = ['All', 'Football'].concat(allSportTags.filter(function (t) { return t !== 'football'; }));
-    groups.forEach(function (group) {
-      var count;
-      if (group === 'All') {
-        count = links.length;
-      } else if (group === 'Football') {
-        count = links.filter(function (a) { return a.dataset.sports.indexOf('football') > -1; }).length;
-      } else {
-        count = links.filter(function (a) {
-          return a.dataset.sports.split(',').indexOf(group) > -1;
-        }).length;
-      }
-      if (!count && group !== 'All' && group !== 'Football') return;
-
-      var btnId = 'sport-' + group.toLowerCase().replace(/[^a-z]+/g, '-');
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'seg-pill seg-pill-sport' + (group === 'Football' ? ' seg-pill-football' : '');
-      btn.id = btnId;
-      btn.setAttribute('aria-pressed', activeSport === group ? 'true' : 'false');
-      btn.innerHTML = '<span>' + (group === 'All' ? 'All Sports' : (SPORT_LABELS[group] || group)) +
-                      '</span><span class="seg-pill-count">' + count + '</span>';
-      btn.addEventListener('click', function () {
-        activeSport = group;
-        renderSportPills();
-        applyFilter();
-      });
-      sportTrack.appendChild(btn);
-    });
-  }
-
-  /* ---------- Search + Region + Sport Filter ---------- */
+  /* ---------- Search + Pinned Filter ---------- */
   function applyFilter() {
     var raw = queryEl.value;
     var terms = raw.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -993,38 +1335,25 @@
 
     links.forEach(function (a) {
       var href = a.getAttribute('href');
-      var regionMatch =
-        activeRegion === 'All' ||
-        (activeRegion === 'Pinned' && pinnedSet.has(href)) ||
-        a.dataset.region === activeRegion;
-
-      var sportsList = a.dataset.sports ? a.dataset.sports.split(',') : [];
-      var sportMatch =
-        !hasFootball ||
-        activeSport === 'All' ||
-        (activeSport === 'Football' ? sportsList.indexOf('football') > -1 : sportsList.indexOf(activeSport) > -1);
+      var pinMatch = !onlyPinned || pinnedSet.has(href);
 
       var hay = a.dataset.hay;
       var flat = hay.replace(/\s+/g, '');
       var textMatch = terms.every(function (t) { return hay.indexOf(t) > -1 || flat.indexOf(t) > -1; });
 
-      var ok = regionMatch && sportMatch && textMatch;
+      var ok = pinMatch && textMatch;
       a.classList.toggle('hidden', !ok);
       if (ok) visible++;
     });
 
-    countEl.textContent = (terms.length || activeRegion !== 'All' || activeSport !== 'All')
+    countEl.textContent = (terms.length || onlyPinned)
       ? visible + ' of ' + links.length
       : links.length + ' live';
     clearBtn.classList.toggle('visible', raw.length > 0);
     emptyEl.hidden = visible !== 0;
-    emptyDescEl.textContent = (hasFootball && activeSport !== 'All')
-      ? 'No channels carry the "' + (SPORT_LABELS[activeSport] || activeSport) + '" tag right now. Try another sport or switch back to All Sports.'
-      : 'Try a broader channel name or switch back to all regions.';
   }
 
-  renderRegionPills();
-  renderSportPills();
+  syncPinnedUI();
   applyFilter();
 
   queryEl.addEventListener('input', applyFilter);
@@ -1036,12 +1365,16 @@
     queryEl.focus();
   });
 
+  pinnedFilterBtn.addEventListener('click', function () {
+    onlyPinned = !onlyPinned;
+    syncPinnedUI();
+    applyFilter();
+  });
+
   resetBtn.addEventListener('click', function () {
     queryEl.value = '';
-    activeRegion = 'All';
-    activeSport = 'All';
-    renderRegionPills();
-    renderSportPills();
+    onlyPinned = false;
+    syncPinnedUI();
     applyFilter();
     queryEl.focus();
   });
@@ -1063,10 +1396,7 @@
       pinBtn.setAttribute('aria-pressed', 'true');
     }
     savePins();
-    if (activeRegion === 'Pinned' && pinnedSet.size === 0) {
-      activeRegion = 'All';
-    }
-    renderRegionPills();
+    syncPinnedUI();
     applyFilter();
   });
 
@@ -1099,7 +1429,7 @@
   });
 
   /* ==========================================================================
-   * 2. Apple Fluid Spring Physics + @asset-animate 3-Layer Parallax
+   * 2. Apple Fluid Spring Physics + 3-Layer Parallax
    * ========================================================================== */
   function rubberband(overshoot, dimension, constant) {
     if (constant === undefined) constant = 0.55;
@@ -1225,7 +1555,7 @@
     emblem.addEventListener('pointerup', releaseEmblem);
     emblem.addEventListener('pointercancel', releaseEmblem);
 
-    /* 3-Layer Parallax on Pointer Move (@asset-animate: -10%, -20%, -30% depth ratios) */
+    /* 3-Layer Parallax on Pointer Move (-10%, -20%, -30% depth ratios) */
     window.addEventListener('pointermove', function (e) {
       if (e.pointerType !== 'mouse' || REDUCED || draggingEmblem) return;
       var nx = (e.clientX / window.innerWidth) * 2 - 1;
@@ -1379,7 +1709,7 @@
   });
 
   /* ==========================================================================
-   * 3. @asset-animate Ambient Bokeh Particles Canvas (#fx)
+   * 3. Ambient Bokeh Particles Canvas (#fx)
    * ========================================================================== */
   var fx = $('#fx'), ctx = fx.getContext('2d');
   var W = 0, H = 0, particles = [], rafId = 0, running = false;
