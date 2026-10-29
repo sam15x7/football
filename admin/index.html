@@ -50,8 +50,6 @@
   td.name { width:40%; } td.file { color:var(--dim); font-size:12px; word-break:break-all; }
   tr:last-child td { border-bottom:0; }
   .pill { display:inline-block; font-size:11px; padding:2px 8px; border-radius:99px; border:1px solid var(--line); color:var(--dim); }
-  .tagchip { display:inline-block; font-size:10.5px; padding:1px 7px; margin:1px 3px 1px 0; border-radius:99px; background:#1c181f; border:1px solid var(--line); color:var(--gold); text-transform:capitalize; }
-  .tagchip.region { color:var(--dim); }
   .filterbar { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
   .filterbar select, .filterbar input { width:auto; flex:1; min-width:110px; }
   .hidden { display:none; }
@@ -92,19 +90,11 @@
     <input id="chName" placeholder="ESPN 4 (Argentina)">
     <label for="chUrl">Stream URL (iframe src) — just paste it</label>
     <input id="chUrl" placeholder="https://dlive.sx/cast/stream-900.php">
-    <div class="cfg">
-      <div><label for="chSport">Sport tags (comma-separated, e.g. football, tennis) — powers the site filters</label>
-        <input id="chSport" list="sportOptions" placeholder="football"><datalist id="sportOptions"></datalist></div>
-      <div><label for="chRegion">Region / country (optional, e.g. UK, MENA)</label>
-        <input id="chRegion" list="regionOptions" placeholder="Argentina"><datalist id="regionOptions"></datalist></div>
-    </div>
-    <details style="margin-top:10px"><summary style="font-size:12px;color:var(--dim);cursor:pointer">Advanced (file name / tab title / extra tags / preview)</summary>
+    <details style="margin-top:10px"><summary style="font-size:12px;color:var(--dim);cursor:pointer">Advanced (file name / tab title / preview)</summary>
       <div class="cfg">
         <div><label for="chFile">File name (auto from name)</label><input id="chFile" placeholder="espn4argentina.html"></div>
         <div><label for="chTitle">Page title (defaults to name)</label><input id="chTitle"></div>
       </div>
-      <label for="chTags">Extra tags (free-form, comma-separated — searchable on the site)</label>
-      <input id="chTags" placeholder="premier league, hd">
       <div class="row"><button class="ghost" id="previewBtn" type="button">Preview page →</button></div>
     </details>
     <div class="row"><button id="addBtn">＋ Add channel &amp; publish</button></div>
@@ -115,8 +105,6 @@
   <section class="card hidden" id="listCard">
     <h2>3 · Channels <span class="pill" id="count"></span></h2>
     <div class="filterbar">
-      <select id="fltSport" aria-label="Filter list by sport"><option value="">All sports</option></select>
-      <select id="fltRegion" aria-label="Filter list by region"><option value="">All regions</option></select>
       <input id="fltSearch" placeholder="Filter channels…" aria-label="Filter channels by text">
     </div>
     <table><tbody id="list"></tbody></table>
@@ -236,57 +224,13 @@ async function gh(pathname, opts = {}) {
    The canonical copy is ALWAYS fetched from the repo through the authenticated
    API (raw.githubusercontent would serve stale cache right after a commit). */
 
-/* ---------- tag / classification helpers (channels.json metadata) ----------
- * Entries may carry optional sport:[], region:'', tags:[] fields. The public
- * index.html grid is GENERATED from them (data-sport/data-region/data-tags).
- * Mirrors admin/lib.js exactly: SPORT_ALIASES, normTag, tagList, classifyChannel,
- * setTags, allSports, renderIndexLinks. */
-const SPORT_ALIASES = {
-  'soccer': 'football', 'association football': 'football',
-  'basket': 'basketball', 'basket ball': 'basketball',
-  'ice hockey': 'hockey',
-  'auto racing': 'motorsport', 'motor racing': 'motorsport', 'racing': 'motorsport',
-  'formula 1': 'f1', 'formula-one': 'f1',
-  'american football': 'nfl', 'nfl football': 'nfl',
-  'mixed martial arts': 'mma',
-  'olympic sports': 'olympics',
-  'sports': '', 'sport': ''
-};
-function normTag(raw) {
-  const s0 = String(raw == null ? '' : raw).trim().toLowerCase().replace(/\s+/g, ' ');
-  if (!s0) return '';
-  return Object.prototype.hasOwnProperty.call(SPORT_ALIASES, s0) ? SPORT_ALIASES[s0] : s0;
-}
-function tagList(v) {
-  const arr = Array.isArray(v) ? v : (v == null || v === '' ? [] : String(v).split(/[,;]/));
-  const out = [];
-  for (const t of arr) { const n = normTag(t); if (n && !out.includes(n)) out.push(n); }
-  return out;
-}
-function classifyChannel(c) {
-  const out = {};
-  const sports = tagList(c.sport !== undefined ? c.sport : c.sports);
-  if (sports.length) out.sport = sports;
-  const region = String(c.region || '').trim();
-  if (region) out.region = region;
-  const tags = tagList(c.tags);
-  if (tags.length) out.tags = tags;
-  return out;
-}
-function setTags(channels) {
-  return channels.map(c => {
-    const cls = classifyChannel(c);
-    const next = Object.assign({}, c);
-    if (cls.sport) next.sport = cls.sport; else delete next.sport;
-    if (cls.region) next.region = cls.region; else delete next.region;
-    if (cls.tags) next.tags = cls.tags; else delete next.tags;
-    return next;
-  });
-}
-function allSports(channels) {
-  const seen = [];
-  for (const c of channels) for (const s of tagList(c.sport !== undefined ? c.sport : c.sports)) if (!seen.includes(s)) seen.push(s);
-  return seen.sort();
+/* ---------- channels.json metadata ----------
+ * Entries carry only { file, name }. The tagging/classification system
+ * (sport/region/tags fields, data-* attributes and chip filters) has been
+ * removed entirely — the public index.html grid is a plain link list.
+ * Mirrors admin/lib.js exactly. */
+function cleanChannels(channels) {
+  return channels.map(c => ({ file: c.file, name: c.name }));
 }
 
 /* ---------- state ---------- */
@@ -343,12 +287,11 @@ async function loadAll() {
   if (!c.repo && data.repo) { $('repo').value = data.repo; }
   if ((!c.branch || c.branch === 'main') && data.branch) { $('branch').value = data.branch; }
   try { localStorage.setItem(LS_CFG, JSON.stringify(cfg())); } catch (_) {}   // blocked storage → in-memory only
-  CHANNELS = setTags(data.channels || []);   // normalize classification fields once on load
+  CHANNELS = cleanChannels(data.channels || []);   // strip any legacy classification fields once on load
   CHANNELS_RAW = { ...data };
   delete CHANNELS_RAW.owner;   // repo coordinates live ONLY in this browser's localStorage
   delete CHANNELS_RAW.repo;
   $('count').textContent = CHANNELS.length + ' channels';
-  refreshTagOptions();
   renderList();
   setStatus($('connStatus'), 'Unlocked ✓ as @' + login + ' → ' + cfg().owner + '/' + cfg().repo + '@' + cfg().branch, 'ok');
   $('addCard').classList.remove('hidden');
@@ -356,38 +299,16 @@ async function loadAll() {
   return data;
 }
 
-/* ---------- tag UI helpers ---------- */
-// Rebuild the sport/region suggestion lists + filter dropdowns from current data.
-function refreshTagOptions() {
-  const dl = $('sportOptions'); if (dl) dl.innerHTML = allSports(CHANNELS).map(s => '<option value="' + esc(s) + '">').join('');
-  const regions = [...new Set(CHANNELS.map(c => String(c.region || '').trim()).filter(Boolean))].sort();
-  const rl = $('regionOptions'); if (rl) rl.innerHTML = regions.map(r => '<option value="' + esc(r) + '">').join('');
-  for (const [id, values] of [['fltSport', allSports(CHANNELS)], ['fltRegion', regions]]) {
-    const sel = $(id); if (!sel) continue;
-    const cur = sel.value;
-    sel.innerHTML = '<option value="">' + (id === 'fltSport' ? 'All sports' : 'All regions') + '</option>' +
-      values.map(v => '<option value="' + esc(v) + '">' + esc(v) + '</option>').join('');
-    sel.value = cur;
-  }
-}
-
+/* ---------- channel list UI ---------- */
 function renderList() {
   const tb = $('list'); tb.innerHTML = '';
-  const fS = ($('fltSport') && $('fltSport').value || '').toLowerCase();
-  const fR = ($('fltRegion') && $('fltRegion').value || '').toLowerCase();
   const fq = (($('fltSearch') && $('fltSearch').value) || '').trim().toLowerCase();
   let shown = 0;
   for (const c of [...CHANNELS].sort((a, b) => a.name.localeCompare(b.name))) {
-    const cls = classifyChannel(c);
-    if (fS && !(cls.sport || []).includes(fS)) continue;
-    if (fR && String(cls.region || '').toLowerCase() !== fR) continue;
-    if (fq && !((c.name + ' ' + c.file + ' ' + (cls.sport || []).join(' ') + ' ' + (cls.region || '') + ' ' + (cls.tags || []).join(' ')).toLowerCase().includes(fq))) continue;
+    if (fq && !((c.name + ' ' + c.file).toLowerCase().includes(fq))) continue;
     shown++;
-    const chips = (cls.sport || []).map(s => '<span class="tagchip">' + esc(s) + '</span>').join('') +
-      (cls.region ? '<span class="tagchip region">' + esc(cls.region) + '</span>' : '') +
-      (cls.tags || []).map(t => '<span class="tagchip region">' + esc(t) + '</span>').join('');
     const tr = document.createElement('tr');
-    tr.innerHTML = '<td class="name">' + esc(c.name) + '<br>' + (chips || '<span class="pill">untagged</span>') + '</td>' +
+    tr.innerHTML = '<td class="name">' + esc(c.name) + '</td>' +
       '<td class="file">' + esc(c.file) + '</td>' +
       '<td style="text-align:right;white-space:nowrap">' +
         '<button class="ghost editBtn" data-file="' + esc(c.file) + '" style="padding:6px 12px;font-size:13px;margin-right:6px">Edit</button>' +
@@ -403,21 +324,9 @@ function renderList() {
 const sortKey = c => String(c.name).toLowerCase();
 function buildIndexLinks() {
   const sorted = [...CHANNELS].sort((a, b) => (sortKey(a) < sortKey(b) ? -1 : sortKey(a) > sortKey(b) ? 1 : 0));
-  return '\n' + sorted.map(c => {
-    const cls = classifyChannel(c);
-    const attrs = [];
-    if (cls.sport) attrs.push('data-sport="' + esc(cls.sport.join(',')) + '"');
-    if (cls.region) attrs.push('data-region="' + esc(cls.region.toLowerCase()) + '"');
-    if (cls.tags) attrs.push('data-tags="' + esc(cls.tags.join(',')) + '"');
-    const a = '<a href="' + encodeURI(c.file) + '"' + (attrs.length ? ' ' + attrs.join(' ') : '') + '>' + esc(c.name) + '</a>';
-    if (cls.sport || cls.region || cls.tags) {
-      const wrap = [];
-      if (cls.sport) wrap.push('data-sport="' + esc(cls.sport.join(',')) + '"');
-      if (cls.region) wrap.push('data-region="' + esc(cls.region.toLowerCase()) + '"');
-      return '  <div class="card"' + (wrap.length ? ' ' + wrap.join(' ') : '') + '>' + a + '</div>';
-    }
-    return '  ' + a;
-  }).join('\n') + '\n';
+  return '\n' + sorted.map(c =>
+    '  <a href="' + encodeURI(c.file) + '">' + esc(c.name) + '</a>'
+  ).join('\n') + '\n';
 }
 function regenerateIndex() {
   // Same rule as admin/lib.js: locate <nav class="grid" ...>, replace its body.
@@ -545,13 +454,13 @@ async function refreshRepoState() {
   ]);
   const data = JSON.parse(b64(ch.content));
   INDEX_HTML = b64(idx.content);
-  CHANNELS = setTags(data.channels || []);
+  CHANNELS = cleanChannels(data.channels || []);
   CHANNELS_RAW = { ...data };
   delete CHANNELS_RAW.owner; delete CHANNELS_RAW.repo;   // coords stay local-only
 }
 
 function channelsPayload() {
-  const data = { ...CHANNELS_RAW, channels: setTags(CHANNELS) };  // keep _note etc.
+  const data = { ...CHANNELS_RAW, channels: cleanChannels(CHANNELS) };  // keep _note etc.
   if (!data._note) data._note = 'Source of truth for the channel list. index.html is GENERATED from this file by the admin dashboard (admin/index.html on GitHub Pages). Publish coordinates (owner/repo/branch) and the GitHub token are stored ONLY in the admin\'s browser localStorage — never in this public file.';
   return JSON.stringify(data, null, 2) + '\n';
 }
@@ -580,20 +489,7 @@ async function addChannel() {
     // channels.json entry + regenerated index.html. No per-file sha is sent,
     // so GitHub can no longer answer 422 Invalid request. "sha" wasn't supplied.
     const exists = CHANNELS.find(c => c.file.toLowerCase() === file.toLowerCase());
-    // Classification fields: only overwrite them when the form actually carries
-    // values (an Edit that leaves the tag inputs untouched keeps current tags).
-    const meta = {};
-    if ($('chSport')) meta.sport = $('chSport').value;
-    if ($('chRegion')) meta.region = $('chRegion').value.trim();
-    if ($('chTags')) meta.tags = $('chTags').value;
-    const touched = Object.values(meta).some(v => String(v).trim() !== '');
-    const entry = { ...(exists || {}), file, name };
-    if (!exists || touched) {
-      if (meta.sport !== undefined) entry.sport = meta.sport;
-      if (meta.region !== undefined) entry.region = meta.region;
-      if (meta.tags !== undefined) entry.tags = meta.tags;
-    }
-    const norm = setTags([entry])[0];
+    const norm = { file, name };
     if (exists) Object.assign(exists, norm); else CHANNELS.push(norm);
     regenerateIndex();                                   // rewrites INDEX_HTML from the updated CHANNELS
     await commitFilesSafe([
@@ -604,8 +500,6 @@ async function addChannel() {
 
     setStatus($('addStatus'), (editing ? '✔ Updated "' : '✔ Added "') + name + '" — GitHub Pages redeploys in ~30–60 s.', 'ok');
     $('chName').value = ''; $('chUrl').value = ''; $('chFile').value = ''; $('chTitle').value = '';
-    if ($('chSport')) $('chSport').value = ''; if ($('chRegion')) $('chRegion').value = ''; if ($('chTags')) $('chTags').value = '';
-    refreshTagOptions();
     renderList(); $('count').textContent = CHANNELS.length + ' channels';
   } catch (e) {
     setStatus($('addStatus'), '✗ ' + e.message, 'err');
@@ -619,11 +513,6 @@ async function editChannel(c) {
   $('chName').value = c.name;
   $('chFile').value = c.file.replace(/\.html$/i, '');
   $('chTitle').value = c.name;
-  // pre-fill classification fields so edits keep/adjust tags
-  const cls = classifyChannel(c);
-  if ($('chSport')) $('chSport').value = (cls.sport || []).join(', ');
-  if ($('chRegion')) $('chRegion').value = cls.region || '';
-  if ($('chTags')) $('chTags').value = (cls.tags || []).join(', ');
   setStatus($('addStatus'), 'Loading current stream URL of "' + c.name + '" …');
   try {
     // read the page file on GitHub and pull its iframe src out for editing
@@ -716,7 +605,6 @@ $('forgetToken').onclick = () => {
 $('addBtn').onclick = addChannel;
 $('previewBtn').onclick = preview;
 $('refreshBtn').onclick = () => loadAll().catch(e => setStatus($('listStatus'), '✗ ' + e.message, 'err'));
-for (const id of ['fltSport', 'fltRegion']) if ($(id)) $(id).onchange = renderList;
 if ($('fltSearch')) $('fltSearch').addEventListener('input', renderList);
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !$('addCard').classList.contains('hidden') &&
