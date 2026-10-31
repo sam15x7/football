@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#09080a">
+<title>Movistar Laliga</title>
+
+<!-- Priority preconnect to stream host before DOM parsing completes -->
+<link rel="preconnect" href="https://thedaddy.pk" crossorigin>
+<link rel="dns-prefetch" href="https://thedaddy.pk">
+
+<!-- Non-blocking Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap"></noscript>
+
+<style>
+  /* ---------- Watermark & Design System Tokens ---------- */
+  :root {
+    color-scheme: dark;
+    --wm-size: 22%;      /* width of the logo relative to the player */
+    --wm-opacity: .4;    /* 40% */
+    --bg: #09080a;
+    --surface: #111014;
+    --surface-glass: rgba(20, 18, 23, 0.76);
+    --surface-hover: rgba(32, 29, 36, 0.88);
+    --gold: #d4af37;
+    --gold-hi: #edd174;
+    --gold-dim: rgba(212, 175, 55, 0.14);
+    --gold-border: rgba(212, 175, 55, 0.36);
+    --danger: #ff6b6b;
+    --danger-dim: rgba(255, 107, 107, 0.12);
+    --danger-border: rgba(255, 107, 107, 0.32);
+    --line: rgba(255, 255, 255, 0.09);
+    --line-hi: rgba(255, 255, 255, 0.16);
+    --text: #f4f1ea;
+    --text-muted: #9e988e;
+    --text-dim: #6e6960;
+    --live: #30d158;
+    --w: min(100%, calc((100dvh - 150px) * 16 / 9)); /* player width, keeps 16:9 inside the screen */
+    --font-head: 'Barlow Condensed', system-ui, -apple-system, sans-serif;
+    --font-body: 'Barlow', system-ui, -apple-system, sans-serif;
+    --font-mono: 'Space Mono', ui-monospace, SFMono-Regular, monospace;
+    --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding:
+      max(12px, env(safe-area-inset-top))
+      max(16px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom))
+      max(16px, env(safe-area-inset-left));
+    gap: 12px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Subtle ambient theater glow (GPU-promoted layer, isolated from layout) */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(50rem 28rem at 50% 38%, rgba(212, 175, 55, 0.065), transparent 70%);
+    animation: ambient-breathe 8s ease-in-out infinite;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+  }
+
+  /* Pause background aura when a modal is open to save mobile GPU cycles */
+  body.modal-active::before {
+    animation-play-state: paused;
+  }
+
+  @keyframes ambient-breathe {
+    0%, 100% { opacity: 0.75; transform: translate3d(0, 0, 0) scale(1); }
+    50% { opacity: 1; transform: translate3d(0, 0, 0) scale(1.03); }
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 3px;
+  }
+
+  /* ---------- Top Broadcast Header ---------- */
+  .broadcast-bar {
+    position: relative;
+    z-index: 1;
+    width: var(--w);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 2px;
+    contain: layout style;
+  }
+
+  .channel-id {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .live-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: rgba(48, 209, 88, 0.1);
+    border: 1px solid rgba(48, 209, 88, 0.28);
+    font: 700 10px/1 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--live);
+    flex: none;
+  }
+
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--live);
+    box-shadow: 0 0 8px var(--live);
+    animation: pulse-dot 2.2s ease-in-out infinite;
+    transform: translate3d(0, 0, 0);
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+    50% { opacity: 0.4; transform: translate3d(0, 0, 0) scale(0.85); }
+  }
+
+  .channel-title {
+    margin: 0;
+    font: 700 clamp(20px, 2.6vw, 26px)/1 var(--font-head);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stream-meta {
+    font: 400 11px/1 var(--font-mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  /* ---------- Player = video + marquee (goes fullscreen together) ---------- */
+  .player {
+    position: relative;
+    z-index: 1;
+    width: var(--w);
+    background: #000;
+    border: 1px solid var(--line);
+    border-top-color: var(--line-hi);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    contain: layout paint;
+    box-shadow:
+      0 24px 60px -18px rgba(0, 0, 0, 0.88),
+      0 0 0 1px rgba(212, 175, 55, 0.05);
+  }
+
+  .player:fullscreen,
+  .player:-webkit-full-screen,
+  .player.pseudo-fs {
+    width: 100vw;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .player.pseudo-fs {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+  }
+
+  .stage {
+    position: relative;
+    overflow: hidden;
+    background: #050507;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    contain: layout paint;
+  }
+
+  /* Instant visual feedback on mobile while external stream handshakes */
+  .stage::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 34px;
+    height: 34px;
+    margin: -17px 0 0 -17px;
+    border-radius: 50%;
+    border: 2px solid rgba(212, 175, 55, 0.16);
+    border-top-color: var(--gold);
+    animation: stage-spin 0.85s linear infinite;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .stage.is-loaded::before {
+    display: none;
+  }
+
+  @keyframes stage-spin {
+    to { transform: translate3d(0, 0, 0) rotate(360deg); }
+  }
+
+  .player:fullscreen .stage,
+  .player:-webkit-full-screen .stage,
+  .player.pseudo-fs .stage {
+    aspect-ratio: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .stage iframe {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: transparent;
+  }
+
+  .wm {
+    position: absolute;
+    z-index: 5;
+    top: 50%;
+    left: 50%;
+    transform: translate3d(-50%, -50%, 0);
+    width: var(--wm-size);
+    height: auto;
+    opacity: var(--wm-opacity);
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  /* ---------- Restyled WhatsApp Channel Marquee ---------- */
+  .marquee {
+    flex: none;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, #100e13 0%, #0b0a0d 100%);
+    border-top: 1px solid rgba(212, 175, 55, 0.18);
+    height: 40px;
+    display: flex;
+    align-items: center;
+    contain: content;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+  }
+
+  .track {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    animation: scroll 34s linear infinite;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+  }
+
+  .marquee:hover .track,
+  .marquee:focus-within .track {
+    animation-play-state: paused;
+  }
+
+  .track a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    color: var(--text);
+    text-decoration: none;
+    font: 500 13.5px/1 var(--font-body);
+    letter-spacing: 0.015em;
+    padding: 0 26px;
+    transition: color 160ms ease;
+  }
+
+  .track a::before {
+    content: "WHATSAPP";
+    font: 700 10px/1 var(--font-mono);
+    letter-spacing: 0.08em;
+    color: var(--gold);
+    background: var(--gold-dim);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 4px;
+    padding: 3px 6px;
+    margin-right: 10px;
+  }
+
+  .track a:hover {
+    color: var(--gold-hi);
+  }
+
+  .track a::after {
+    content: "\25C6";
+    margin-left: 44px;
+    font-size: 9px;
+    color: rgba(212, 175, 55, 0.42);
+  }
+
+  @keyframes scroll {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-50%, 0, 0); }
+  }
+
+  /* ---------- Bottom Action Bar (Apple HIG 44px Touch Targets) ---------- */
+  .control-bar {
+    position: relative;
+    z-index: 1;
+    width: var(--w);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .action-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 18px;
+    border-radius: 999px;
+    font: 600 14px/1 var(--font-body);
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    transition:
+      transform 120ms var(--ease-spring),
+      background-color 180ms ease,
+      border-color 180ms ease,
+      color 180ms ease,
+      box-shadow 200ms ease;
+  }
+
+  .btn svg {
+    width: 17px;
+    height: 17px;
+    flex: none;
+  }
+
+  .btn:active {
+    transform: scale(0.97);
+  }
+
+  /* Persistent "Join WhatsApp Channel" Button */
+  .btn-whatsapp {
+    background: linear-gradient(180deg, rgba(212, 175, 55, 0.18) 0%, rgba(212, 175, 55, 0.09) 100%);
+    color: var(--gold-hi);
+    border: 1px solid var(--gold-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 24px -10px rgba(0, 0, 0, 0.65);
+  }
+
+  .btn-whatsapp:hover {
+    background: rgba(212, 175, 55, 0.24);
+    border-color: var(--gold);
+    color: #fff;
+    box-shadow: 0 10px 26px -8px rgba(212, 175, 55, 0.28);
+  }
+
+  /* Report Issue / Feedback Button */
+  .btn-report {
+    background: var(--surface-glass);
+    color: var(--text-muted);
+    border: 1px solid var(--line);
+    border-top-color: var(--line-hi);
+  }
+
+  .btn-report:hover {
+    background: var(--danger-dim);
+    border-color: var(--danger-border);
+    color: #ffb3b3;
+  }
+
+  .btn-report svg {
+    color: var(--gold);
+    transition: color 180ms ease, transform 180ms var(--ease-spring);
+  }
+
+  .btn-report:hover svg {
+    color: var(--danger);
+    transform: rotate(-8deg) scale(1.06);
+  }
+
+  /* Fullscreen Button */
+  .btn-fs {
+    background: var(--surface-glass);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-top-color: var(--line-hi);
+  }
+
+  .btn-fs:hover {
+    background: var(--surface-hover);
+    border-color: var(--gold-border);
+    color: var(--gold-hi);
+  }
+
+  .btn-fs .kbd-tag {
+    font: 400 10px/1 var(--font-mono);
+    color: var(--text-muted);
+    padding: 3px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--line);
+    margin-left: 2px;
+  }
+
+  /* Hide persistent buttons & header chrome when in any fullscreen mode */
+  body.is-fullscreen #waPersistentBtn,
+  body.is-fullscreen #reportBtn,
+  :fullscreen #waPersistentBtn,
+  :fullscreen #reportBtn,
+  :-webkit-full-screen #waPersistentBtn,
+  :-webkit-full-screen #reportBtn,
+  .player:fullscreen ~ .control-bar #waPersistentBtn,
+  .player:fullscreen ~ .control-bar #reportBtn,
+  .player:-webkit-full-screen ~ .control-bar #waPersistentBtn,
+  .player:-webkit-full-screen ~ .control-bar #reportBtn,
+  .player.pseudo-fs ~ .control-bar #waPersistentBtn,
+  .player.pseudo-fs ~ .control-bar #reportBtn,
+  body.is-fullscreen .broadcast-bar,
+  .player.pseudo-fs ~ .control-bar {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  /* ---------- Shared Modal System (WhatsApp & Issue Reporter) ---------- */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(5, 4, 6, 0.78);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    backdrop-filter: blur(14px) saturate(150%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 240ms var(--ease-spring),
+      visibility 0s linear 240ms;
+  }
+
+  .modal-backdrop.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition:
+      opacity 240ms var(--ease-spring),
+      visibility 0s linear 0s;
+  }
+
+  .modal-card {
+    position: relative;
+    width: min(100%, 390px);
+    padding: 28px 24px 22px;
+    border-radius: 20px;
+    background: linear-gradient(165deg, rgba(24, 22, 28, 0.97) 0%, rgba(13, 12, 15, 0.99) 100%);
+    border: 1px solid var(--line-hi);
+    border-top-color: rgba(212, 175, 55, 0.45);
+    box-shadow:
+      0 28px 64px -16px rgba(0, 0, 0, 0.92),
+      0 0 40px -12px rgba(212, 175, 55, 0.22);
+    text-align: center;
+    transform: translate3d(0, 12px, 0) scale(0.96);
+    transition: transform 260ms var(--ease-spring);
+    will-change: transform;
+  }
+
+  .modal-backdrop.is-open .modal-card {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  /* 44x44px Close (X) Button */
+  .modal-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    padding: 0;
+    transition: color 150ms ease, transform 120ms ease;
+  }
+
+  .modal-close-pill {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--line);
+    display: grid;
+    place-items: center;
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+
+  .modal-close:hover {
+    color: var(--text);
+  }
+
+  .modal-close:hover .modal-close-pill {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--gold-border);
+  }
+
+  .modal-close:active {
+    transform: scale(0.92);
+  }
+
+  .modal-close svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+  }
+
+  .modal-icon-wrap {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 14px;
+    border-radius: 16px;
+    background: radial-gradient(circle at 50% 25%, rgba(212, 175, 55, 0.24), rgba(212, 175, 55, 0.06));
+    border: 1px solid var(--gold-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    display: grid;
+    place-items: center;
+    color: var(--gold);
+  }
+
+  .modal-icon-wrap svg {
+    width: 28px;
+    height: 28px;
+    fill: currentColor;
+  }
+
+  .modal-eyebrow {
+    display: block;
+    font: 700 10px/1 var(--font-mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+
+  .modal-title {
+    margin: 0;
+    font: 700 28px/1.05 var(--font-head);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .modal-copy {
+    margin: 8px auto 18px;
+    font: 400 14.5px/1.45 var(--font-body);
+    color: var(--text-muted);
+    max-width: 31ch;
+  }
+
+  .modal-cta {
+    width: 100%;
+    min-height: 46px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold) 100%);
+    color: #09080a;
+    border: 0;
+    font: 600 15px/1 var(--font-body);
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 12px 28px -10px rgba(212, 175, 55, 0.55);
+    transition: transform 120ms var(--ease-spring), filter 160ms ease;
+  }
+
+  .modal-cta:hover {
+    filter: brightness(1.06);
+  }
+
+  .modal-cta:active {
+    transform: scale(0.98);
+  }
+
+  .modal-cta svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+  }
+
+  .modal-later {
+    margin-top: 8px;
+    width: 100%;
+    min-height: 44px;
+    background: transparent;
+    border: 0;
+    border-radius: 10px;
+    color: var(--text-muted);
+    font: 500 13.5px/1 var(--font-body);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: color 150ms ease, background-color 150ms ease;
+  }
+
+  .modal-later:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  /* ---------- Report Issue Modal Specifics ---------- */
+  .issue-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+
+  .issue-chip {
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--line);
+    color: var(--text-muted);
+    font: 500 12.5px/1 var(--font-body);
+    cursor: pointer;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease,
+      transform 120ms var(--ease-spring);
+  }
+
+  .issue-chip:hover {
+    color: var(--text);
+    border-color: var(--line-hi);
+  }
+
+  .issue-chip:active {
+    transform: scale(0.95);
+  }
+
+  .issue-chip[aria-pressed="true"] {
+    background: var(--gold-dim);
+    border-color: var(--gold);
+    color: var(--gold-hi);
+  }
+
+  .issue-note {
+    width: 100%;
+    min-height: 72px;
+    max-height: 130px;
+    resize: vertical;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    border-radius: 12px;
+    background: rgba(9, 8, 10, 0.75);
+    border: 1px solid var(--line);
+    color: var(--text);
+    /* 16px prevents iOS Safari from auto-zooming the page when focusing input */
+    font: 400 16px/1.4 var(--font-body);
+    transition: border-color 160ms ease;
+  }
+
+  .issue-note::placeholder {
+    color: var(--text-dim);
+  }
+
+  .issue-note:focus {
+    outline: none;
+    border-color: var(--gold);
+  }
+
+  .email-badge {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--gold-hi);
+  }
+
+  /* ---------- Responsive Mobile Tuning ---------- */
+  @media (max-width: 600px) {
+    body {
+      padding: 10px 12px;
+      gap: 10px;
+    }
+
+    /* Lighter backdrop blur radius on mobile GPUs prevents frame stutter over live video */
+    .modal-backdrop {
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      background: rgba(5, 4, 6, 0.84);
+    }
+
+    .stream-meta,
+    .btn-fs .kbd-tag {
+      display: none;
+    }
+
+    .control-bar {
+      gap: 8px;
+    }
+
+    .btn-whatsapp {
+      flex: 1 1 100%;
+    }
+
+    .action-group {
+      width: 100%;
+      margin-left: 0;
+    }
+
+    .action-group .btn {
+      flex: 1 1 50%;
+      padding: 0 12px;
+      font-size: 13.5px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header class="broadcast-bar" aria-label="Stream header">
+  <div class="channel-id">
+    <span class="live-pill"><span class="live-dot" aria-hidden="true"></span>LIVE</span>
+    <h1 class="channel-title">Movistar Laliga</h1>
+  </div>
+  <span class="stream-meta">CH • DIRECT FEED</span>
+</header>
+
+<div class="player" id="player">
+  <div class="stage" id="stage">
+
+    <!-- ============ PASTE YOUR IFRAME BELOW THIS LINE ============ -->
+    <iframe
+      id="streamFrame"
+      src="https://thedaddy.pk/stream/stream-84.php"
+      width="100%"
+      height="100%"
+      style="border:0;"
+      fetchpriority="high"
+      loading="eager"
+      allow="autoplay; encrypted-media; picture-in-picture">
+    </iframe>
+    <!-- ============ PASTE YOUR IFRAME ABOVE THIS LINE ============ -->
+
+    <!-- Logo is served from this repo (same origin as the page) -->
+    <img class="wm" src="logo.webp" alt="" decoding="async" fetchpriority="low" draggable="false" onerror="this.remove()">
+  </div>
+
+  <div class="marquee" aria-label="WhatsApp channel"><div class="track" id="track"></div></div>
+</div>
+
+<div class="control-bar">
+  <a class="btn btn-whatsapp" id="waPersistentBtn" href="https://whatsapp.com/channel/0029VaEQJcJEVccLFGqfTo0w" target="_blank" rel="noopener noreferrer">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm5.77 14.07c-.24.68-1.41 1.3-1.95 1.38-.5.08-1.13.11-1.82-.11-.42-.13-.96-.31-1.65-.61-2.9-1.25-4.79-4.17-4.94-4.36-.14-.19-1.18-1.57-1.18-2.99 0-1.42.74-2.12 1.01-2.41.26-.29.58-.36.77-.36.19 0 .38.01.55.01.18 0 .41-.07.64.49.24.58.82 2 .89 2.14.07.14.12.31.02.5-.1.19-.14.31-.29.48-.14.17-.3.38-.43.51-.14.14-.29.3-.13.58.17.29.75 1.23 1.61 2 .89.79 1.65 1.04 1.93 1.18.29.14.46.12.63-.07.17-.19.72-.84.91-1.13.19-.29.38-.24.65-.14.26.1 1.68.79 1.97.94.29.14.48.22.55.34.07.12.07.7-.17 1.38z"/>
+    </svg>
+    <span>Join WhatsApp Channel</span>
+  </a>
+
+  <div class="action-group">
+    <button class="btn btn-report" id="reportBtn" type="button" aria-haspopup="dialog" aria-controls="reportModal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+        <line x1="4" y1="22" x2="4" y2="15"/>
+      </svg>
+      <span>Report Issue</span>
+    </button>
+
+    <button class="btn btn-fs" id="fsBtn" type="button">
+      <svg id="fsIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+      </svg>
+      <span id="fsLabel">Fullscreen</span>
+      <span class="kbd-tag" aria-hidden="true">DBL-CLICK</span>
+    </button>
+  </div>
+</div>
+
+<!-- Non-blocking WhatsApp Channel Join Modal -->
+<div class="modal-backdrop" id="waModal" role="dialog" aria-modal="true" aria-labelledby="waModalTitle" aria-describedby="waModalDesc" aria-hidden="true">
+  <div class="modal-card">
+    <button class="modal-close" id="waCloseBtn" type="button" aria-label="Close popup">
+      <span class="modal-close-pill">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </span>
+    </button>
+
+    <div class="modal-icon-wrap" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm5.77 14.07c-.24.68-1.41 1.3-1.95 1.38-.5.08-1.13.11-1.82-.11-.42-.13-.96-.31-1.65-.61-2.9-1.25-4.79-4.17-4.94-4.36-.14-.19-1.18-1.57-1.18-2.99 0-1.42.74-2.12 1.01-2.41.26-.29.58-.36.77-.36.19 0 .38.01.55.01.18 0 .41-.07.64.49.24.58.82 2 .89 2.14.07.14.12.31.02.5-.1.19-.14.31-.29.48-.14.17-.3.38-.43.51-.14.14-.29.3-.13.58.17.29.75 1.23 1.61 2 .89.79 1.65 1.04 1.93 1.18.29.14.46.12.63-.07.17-.19.72-.84.91-1.13.19-.29.38-.24.65-.14.26.1 1.68.79 1.97.94.29.14.48.22.55.34.07.12.07.7-.17 1.38z"/>
+      </svg>
+    </div>
+
+    <span class="modal-eyebrow">Live Broadcast Alerts</span>
+    <h2 class="modal-title" id="waModalTitle">Never Miss Kickoff</h2>
+    <p class="modal-copy" id="waModalDesc">Get instant match links and backup stream updates on our official WhatsApp channel.</p>
+
+    <a class="modal-cta" id="waJoinBtn" href="https://whatsapp.com/channel/0029VaEQJcJEVccLFGqfTo0w" target="_blank" rel="noopener noreferrer">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm5.77 14.07c-.24.68-1.41 1.3-1.95 1.38-.5.08-1.13.11-1.82-.11-.42-.13-.96-.31-1.65-.61-2.9-1.25-4.79-4.17-4.94-4.36-.14-.19-1.18-1.57-1.18-2.99 0-1.42.74-2.12 1.01-2.41.26-.29.58-.36.77-.36.19 0 .38.01.55.01.18 0 .41-.07.64.49.24.58.82 2 .89 2.14.07.14.12.31.02.5-.1.19-.14.31-.29.48-.14.17-.3.38-.43.51-.14.14-.29.3-.13.58.17.29.75 1.23 1.61 2 .89.79 1.65 1.04 1.93 1.18.29.14.46.12.63-.07.17-.19.72-.84.91-1.13.19-.29.38-.24.65-.14.26.1 1.68.79 1.97.94.29.14.48.22.55.34.07.12.07.7-.17 1.38z"/>
+      </svg>
+      <span>Join Channel</span>
+    </a>
+
+    <button class="modal-later" id="waLaterBtn" type="button">Maybe later</button>
+  </div>
+</div>
+
+<!-- Stream Issue / Feedback Modal -->
+<div class="modal-backdrop" id="reportModal" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle" aria-describedby="reportModalDesc" aria-hidden="true">
+  <div class="modal-card">
+    <button class="modal-close" id="reportCloseBtn" type="button" aria-label="Close issue reporter">
+      <span class="modal-close-pill">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </span>
+    </button>
+
+    <div class="modal-icon-wrap" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/>
+      </svg>
+    </div>
+
+    <span class="modal-eyebrow">Direct Broadcast Support</span>
+    <h2 class="modal-title" id="reportModalTitle">Report Stream Issue</h2>
+    <p class="modal-copy" id="reportModalDesc">Select what is happening and send a direct report to <span class="email-badge">thepredictor@aster.cx</span></p>
+
+    <div class="issue-chips" role="group" aria-label="Issue category">
+      <button type="button" class="issue-chip" aria-pressed="true" data-issue="Stream Offline">Stream Offline</button>
+      <button type="button" class="issue-chip" aria-pressed="false" data-issue="Buffering / Lag">Buffering / Lag</button>
+      <button type="button" class="issue-chip" aria-pressed="false" data-issue="Audio Issue">Audio Issue</button>
+      <button type="button" class="issue-chip" aria-pressed="false" data-issue="Video Frozen">Video Frozen</button>
+      <button type="button" class="issue-chip" aria-pressed="false" data-issue="Other Feedback">Other</button>
+    </div>
+
+    <textarea class="issue-note" id="issueNote" rows="2" placeholder="Optional details (e.g., error message, device, or feedback)..."></textarea>
+
+    <a class="modal-cta" id="sendReportBtn" href="mailto:thepredictor@aster.cx">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+      </svg>
+      <span>Send Report via Email</span>
+    </a>
+
+    <button class="modal-later" id="copyEmailBtn" type="button">
+      <span id="copyEmailText">Or copy email: thepredictor@aster.cx</span>
+    </button>
+  </div>
+</div>
+
+<script>
+  /* ---------- Edit these ---------- */
+  const CHANNEL_URL   = "https://whatsapp.com/channel/0029VaEQJcJEVccLFGqfTo0w";
+  const CHANNEL_TEXT  = "Join our WhatsApp channel for live updates";
+  const SUPPORT_EMAIL = "thepredictor@aster.cx";
+  const STREAM_NAME   = "Movistar Laliga";
+  /* -------------------------------- */
+
+  const player          = document.getElementById("player");
+  const stage           = document.getElementById("stage");
+  const streamFrame     = document.getElementById("streamFrame");
+  const fsBtn           = document.getElementById("fsBtn");
+  const fsLabel         = document.getElementById("fsLabel");
+  const fsIcon          = document.getElementById("fsIcon");
+  const waPersistentBtn = document.getElementById("waPersistentBtn");
+  const waModal         = document.getElementById("waModal");
+  const waJoinBtn       = document.getElementById("waJoinBtn");
+  const waCloseBtn      = document.getElementById("waCloseBtn");
+  const waLaterBtn      = document.getElementById("waLaterBtn");
+
+  /* Issue Reporter Elements */
+  const reportBtn       = document.getElementById("reportBtn");
+  const reportModal     = document.getElementById("reportModal");
+  const reportCloseBtn  = document.getElementById("reportCloseBtn");
+  const issueChips      = document.querySelectorAll(".issue-chip");
+  const issueNote       = document.getElementById("issueNote");
+  const sendReportBtn   = document.getElementById("sendReportBtn");
+  const copyEmailBtn    = document.getElementById("copyEmailBtn");
+  const copyEmailText   = document.getElementById("copyEmailText");
+
+  /* Stop stage spinner once iframe finishes initial load */
+  streamFrame.addEventListener("load", () => {
+    stage.classList.add("is-loaded");
+  }, { once: true });
+
+  /* Keep dynamic channel URL synced across all CTAs */
+  waPersistentBtn.href = CHANNEL_URL;
+  waJoinBtn.href       = CHANNEL_URL;
+
+  /* Marquee: two identical halves so the loop is seamless */
+  const link = `<a href="${CHANNEL_URL}" target="_blank" rel="noopener noreferrer">${CHANNEL_TEXT}</a>`;
+  const hiddenLink = link.replace("<a ", '<a aria-hidden="true" tabindex="-1" ');
+  document.getElementById("track").innerHTML = link.repeat(6) + hiddenLink.repeat(6);
+
+  /* Fullscreen detection & state sync (Standard + WebKit + iOS pseudo-fs) */
+  const getFsElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+  const inFs = () => Boolean(getFsElement()) || player.classList.contains("pseudo-fs");
+
+  function syncLabel() {
+    const active = inFs();
+    fsLabel.textContent = active ? "Exit fullscreen" : "Fullscreen";
+    fsIcon.innerHTML = active
+      ? '<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>'
+      : '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>';
+
+    document.body.classList.toggle("is-fullscreen", active);
+    waPersistentBtn.hidden = active;
+    reportBtn.hidden       = active;
+  }
+
+  function toggleFs() {
+    if (inFs()) {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+      player.classList.remove("pseudo-fs");
+    } else if (player.requestFullscreen) {
+      player.requestFullscreen().catch(() => player.classList.add("pseudo-fs"));
+    } else if (player.webkitRequestFullscreen) {
+      try {
+        player.webkitRequestFullscreen();
+      } catch (e) {
+        player.classList.add("pseudo-fs");
+      }
+    } else {
+      player.classList.add("pseudo-fs"); // iPhone Safari fallback
+    }
+    setTimeout(syncLabel, 50);
+  }
+
+  fsBtn.addEventListener("click", toggleFs);
+  stage.addEventListener("dblclick", toggleFs);
+  document.addEventListener("fullscreenchange", syncLabel);
+  document.addEventListener("webkitfullscreenchange", syncLabel);
+
+  /* ---------- Modal Helper (Pauses background GPU aura while open) ---------- */
+  function syncBodyModalState() {
+    const anyOpen = waModal.classList.contains("is-open") || reportModal.classList.contains("is-open");
+    document.body.classList.toggle("modal-active", anyOpen);
+  }
+
+  function openWaModal() {
+    if (reportModal.classList.contains("is-open")) return;
+    waModal.classList.add("is-open");
+    waModal.setAttribute("aria-hidden", "false");
+    syncBodyModalState();
+  }
+
+  function closeWaModal() {
+    if (!waModal.classList.contains("is-open")) return;
+    waModal.classList.remove("is-open");
+    waModal.setAttribute("aria-hidden", "true");
+    syncBodyModalState();
+  }
+
+  /* Schedule WhatsApp popup during browser idle time so mobile stream connection gets 100% CPU/network priority */
+  const schedulePopup = window.requestIdleCallback || (cb => setTimeout(cb, 350));
+  window.addEventListener("DOMContentLoaded", () => {
+    schedulePopup(() => setTimeout(openWaModal, 250), { timeout: 1200 });
+  }, { once: true });
+
+  waCloseBtn.addEventListener("click", closeWaModal);
+  waLaterBtn.addEventListener("click", closeWaModal);
+  waJoinBtn.addEventListener("click", () => setTimeout(closeWaModal, 60));
+  waModal.addEventListener("click", e => {
+    if (e.target === waModal) closeWaModal();
+  });
+
+  /* ---------- Report Issue / Feedback Modal Logic ---------- */
+  let selectedIssue = "Stream Offline";
+
+  function updateMailtoHref() {
+    const note = issueNote.value.trim();
+    const subject = `[Stream Issue] ${STREAM_NAME} - ${selectedIssue}`;
+    const bodyLines = [
+      `Channel: ${STREAM_NAME}`,
+      `Issue Category: ${selectedIssue}`,
+      note ? `Details: ${note}` : `Details: (No additional notes provided)`,
+      `---`,
+      `Time (UTC): ${new Date().toISOString()}`,
+      `Viewport: ${window.innerWidth}x${window.innerHeight}`
+    ];
+    sendReportBtn.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join("\n"))}`;
+  }
+
+  function openReportModal() {
+    closeWaModal();
+    updateMailtoHref();
+    reportModal.classList.add("is-open");
+    reportModal.setAttribute("aria-hidden", "false");
+    syncBodyModalState();
+  }
+
+  function closeReportModal() {
+    if (!reportModal.classList.contains("is-open")) return;
+    reportModal.classList.remove("is-open");
+    reportModal.setAttribute("aria-hidden", "true");
+    syncBodyModalState();
+  }
+
+  issueChips.forEach(chip => {
+    chip.addEventListener("click", () => {
+      issueChips.forEach(c => c.setAttribute("aria-pressed", "false"));
+      chip.setAttribute("aria-pressed", "true");
+      selectedIssue = chip.dataset.issue;
+      updateMailtoHref();
+    });
+  });
+
+  issueNote.addEventListener("input", updateMailtoHref);
+
+  reportBtn.addEventListener("click", openReportModal);
+  reportCloseBtn.addEventListener("click", closeReportModal);
+  sendReportBtn.addEventListener("click", () => setTimeout(closeReportModal, 120));
+  reportModal.addEventListener("click", e => {
+    if (e.target === reportModal) closeReportModal();
+  });
+
+  copyEmailBtn.addEventListener("click", () => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(SUPPORT_EMAIL).then(() => {
+        copyEmailText.textContent = "Copied thepredictor@aster.cx!";
+        copyEmailBtn.style.color = "var(--live)";
+        setTimeout(() => {
+          copyEmailText.textContent = `Or copy email: ${SUPPORT_EMAIL}`;
+          copyEmailBtn.style.color = "";
+        }, 2200);
+      });
+    } else {
+      window.location.href = sendReportBtn.href;
+    }
+  });
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      if (reportModal.classList.contains("is-open")) {
+        closeReportModal();
+        return;
+      }
+      if (waModal.classList.contains("is-open")) {
+        closeWaModal();
+        return;
+      }
+      if (player.classList.contains("pseudo-fs")) {
+        player.classList.remove("pseudo-fs");
+        syncLabel();
+      }
+    }
+  });
+</script>
+</body>
+</html>
