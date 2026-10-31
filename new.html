@@ -6,11 +6,11 @@
 <meta name="theme-color" content="#09080a">
 <title>Live</title>
 
-<!-- Open the connection to the stream host right away, before the iframe needs it -->
+<!-- Priority preconnect to stream host before DOM parsing completes -->
 <link rel="preconnect" href="https://thedaddy.pk" crossorigin>
 <link rel="dns-prefetch" href="https://thedaddy.pk">
 
-<!-- Fonts load without blocking the page, so they never delay the iframe -->
+<!-- Non-blocking Google Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
@@ -30,19 +30,21 @@
     --gold-hi: #edd174;
     --gold-dim: rgba(212, 175, 55, 0.14);
     --gold-border: rgba(212, 175, 55, 0.36);
+    --danger: #ff6b6b;
+    --danger-dim: rgba(255, 107, 107, 0.12);
+    --danger-border: rgba(255, 107, 107, 0.32);
     --line: rgba(255, 255, 255, 0.09);
     --line-hi: rgba(255, 255, 255, 0.16);
     --text: #f4f1ea;
     --text-muted: #9e988e;
     --text-dim: #6e6960;
     --live: #30d158;
-    --w: min(100%, calc((100dvh - 150px) * 16 / 9));   /* player width, keeps 16:9 inside the screen */
+    --w: min(100%, calc((100dvh - 150px) * 16 / 9)); /* player width, keeps 16:9 inside the screen */
     --font-head: 'Barlow Condensed', system-ui, -apple-system, sans-serif;
     --font-body: 'Barlow', system-ui, -apple-system, sans-serif;
     --font-mono: 'Space Mono', ui-monospace, SFMono-Regular, monospace;
     --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
   }
-  /* ------------------------------------------------------ */
 
   * {
     box-sizing: border-box;
@@ -78,7 +80,7 @@
     overflow-x: hidden;
   }
 
-  /* Subtle ambient theater glow (@asset-animate breathing aura) */
+  /* Subtle ambient theater glow (GPU-promoted layer, isolated from layout) */
   body::before {
     content: "";
     position: fixed;
@@ -88,12 +90,18 @@
     background:
       radial-gradient(50rem 28rem at 50% 38%, rgba(212, 175, 55, 0.065), transparent 70%);
     animation: ambient-breathe 8s ease-in-out infinite;
-    will-change: opacity, transform;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+  }
+
+  /* Pause background aura when a modal is open to save mobile GPU cycles */
+  body.modal-active::before {
+    animation-play-state: paused;
   }
 
   @keyframes ambient-breathe {
-    0%, 100% { opacity: 0.75; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.03); }
+    0%, 100% { opacity: 0.75; transform: translate3d(0, 0, 0) scale(1); }
+    50% { opacity: 1; transform: translate3d(0, 0, 0) scale(1.03); }
   }
 
   :focus-visible {
@@ -111,6 +119,7 @@
     justify-content: space-between;
     gap: 12px;
     padding: 0 2px;
+    contain: layout style;
   }
 
   .channel-id {
@@ -142,11 +151,12 @@
     background: var(--live);
     box-shadow: 0 0 8px var(--live);
     animation: pulse-dot 2.2s ease-in-out infinite;
+    transform: translate3d(0, 0, 0);
   }
 
   @keyframes pulse-dot {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.85); }
+    0%, 100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+    50% { opacity: 0.4; transform: translate3d(0, 0, 0) scale(0.85); }
   }
 
   .channel-title {
@@ -180,6 +190,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    contain: layout paint;
     box-shadow:
       0 24px 60px -18px rgba(0, 0, 0, 0.88),
       0 0 0 1px rgba(212, 175, 55, 0.05);
@@ -204,9 +215,35 @@
   .stage {
     position: relative;
     overflow: hidden;
-    background: #000;
+    background: #050507;
     width: 100%;
     aspect-ratio: 16 / 9;
+    contain: layout paint;
+  }
+
+  /* Instant visual feedback on mobile while external stream handshakes */
+  .stage::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 34px;
+    height: 34px;
+    margin: -17px 0 0 -17px;
+    border-radius: 50%;
+    border: 2px solid rgba(212, 175, 55, 0.16);
+    border-top-color: var(--gold);
+    animation: stage-spin 0.85s linear infinite;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .stage.is-loaded::before {
+    display: none;
+  }
+
+  @keyframes stage-spin {
+    to { transform: translate3d(0, 0, 0) rotate(360deg); }
   }
 
   .player:fullscreen .stage,
@@ -220,10 +257,11 @@
   .stage iframe {
     position: absolute;
     inset: 0;
+    z-index: 1;
     width: 100%;
     height: 100%;
     border: 0;
-    background: #000;
+    background: transparent;
   }
 
   .wm {
@@ -231,7 +269,7 @@
     z-index: 5;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate3d(-50%, -50%, 0);
     width: var(--wm-size);
     height: auto;
     opacity: var(--wm-opacity);
@@ -250,6 +288,7 @@
     height: 40px;
     display: flex;
     align-items: center;
+    contain: content;
     -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
     mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
   }
@@ -259,7 +298,8 @@
     align-items: center;
     white-space: nowrap;
     animation: scroll 34s linear infinite;
-    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
   }
 
   .marquee:hover .track,
@@ -303,8 +343,8 @@
   }
 
   @keyframes scroll {
-    from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-50%, 0, 0); }
   }
 
   /* ---------- Bottom Action Bar (Apple HIG 44px Touch Targets) ---------- */
@@ -317,6 +357,13 @@
     justify-content: space-between;
     gap: 10px;
     flex-wrap: wrap;
+  }
+
+  .action-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
   }
 
   .btn {
@@ -367,15 +414,36 @@
     box-shadow: 0 10px 26px -8px rgba(212, 175, 55, 0.28);
   }
 
+  /* Report Issue / Feedback Button */
+  .btn-report {
+    background: var(--surface-glass);
+    color: var(--text-muted);
+    border: 1px solid var(--line);
+    border-top-color: var(--line-hi);
+  }
+
+  .btn-report:hover {
+    background: var(--danger-dim);
+    border-color: var(--danger-border);
+    color: #ffb3b3;
+  }
+
+  .btn-report svg {
+    color: var(--gold);
+    transition: color 180ms ease, transform 180ms var(--ease-spring);
+  }
+
+  .btn-report:hover svg {
+    color: var(--danger);
+    transform: rotate(-8deg) scale(1.06);
+  }
+
   /* Fullscreen Button */
   .btn-fs {
-    margin-left: auto;
     background: var(--surface-glass);
     color: var(--text);
     border: 1px solid var(--line);
     border-top-color: var(--line-hi);
-    -webkit-backdrop-filter: blur(16px);
-    backdrop-filter: blur(16px);
   }
 
   .btn-fs:hover {
@@ -394,13 +462,19 @@
     margin-left: 2px;
   }
 
-  /* Hide persistent WhatsApp button & header chrome when in any fullscreen mode */
+  /* Hide persistent buttons & header chrome when in any fullscreen mode */
   body.is-fullscreen #waPersistentBtn,
+  body.is-fullscreen #reportBtn,
   :fullscreen #waPersistentBtn,
+  :fullscreen #reportBtn,
   :-webkit-full-screen #waPersistentBtn,
+  :-webkit-full-screen #reportBtn,
   .player:fullscreen ~ .control-bar #waPersistentBtn,
+  .player:fullscreen ~ .control-bar #reportBtn,
   .player:-webkit-full-screen ~ .control-bar #waPersistentBtn,
+  .player:-webkit-full-screen ~ .control-bar #reportBtn,
   .player.pseudo-fs ~ .control-bar #waPersistentBtn,
+  .player.pseudo-fs ~ .control-bar #reportBtn,
   body.is-fullscreen .broadcast-bar,
   .player.pseudo-fs ~ .control-bar {
     display: none !important;
@@ -408,7 +482,7 @@
     pointer-events: none !important;
   }
 
-  /* ---------- WhatsApp Channel Join Popup Modal ---------- */
+  /* ---------- Shared Modal System (WhatsApp & Issue Reporter) ---------- */
   .modal-backdrop {
     position: fixed;
     inset: 0;
@@ -416,15 +490,15 @@
     display: grid;
     place-items: center;
     padding: 20px;
-    background: rgba(5, 4, 6, 0.72);
-    -webkit-backdrop-filter: blur(16px) saturate(160%);
-    backdrop-filter: blur(16px) saturate(160%);
+    background: rgba(5, 4, 6, 0.78);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    backdrop-filter: blur(14px) saturate(150%);
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
     transition:
-      opacity 260ms var(--ease-spring),
-      visibility 0s linear 260ms;
+      opacity 240ms var(--ease-spring),
+      visibility 0s linear 240ms;
   }
 
   .modal-backdrop.is-open {
@@ -432,28 +506,29 @@
     visibility: visible;
     pointer-events: auto;
     transition:
-      opacity 260ms var(--ease-spring),
+      opacity 240ms var(--ease-spring),
       visibility 0s linear 0s;
   }
 
   .modal-card {
     position: relative;
-    width: min(100%, 380px);
+    width: min(100%, 390px);
     padding: 28px 24px 22px;
     border-radius: 20px;
-    background: linear-gradient(165deg, rgba(24, 22, 28, 0.96) 0%, rgba(13, 12, 15, 0.98) 100%);
+    background: linear-gradient(165deg, rgba(24, 22, 28, 0.97) 0%, rgba(13, 12, 15, 0.99) 100%);
     border: 1px solid var(--line-hi);
     border-top-color: rgba(212, 175, 55, 0.45);
     box-shadow:
       0 28px 64px -16px rgba(0, 0, 0, 0.92),
       0 0 40px -12px rgba(212, 175, 55, 0.22);
     text-align: center;
-    transform: translateY(12px) scale(0.96);
-    transition: transform 280ms var(--ease-spring);
+    transform: translate3d(0, 12px, 0) scale(0.96);
+    transition: transform 260ms var(--ease-spring);
+    will-change: transform;
   }
 
   .modal-backdrop.is-open .modal-card {
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 
   /* 44x44px Close (X) Button */
@@ -543,10 +618,10 @@
   }
 
   .modal-copy {
-    margin: 8px auto 20px;
+    margin: 8px auto 18px;
     font: 400 14.5px/1.45 var(--font-body);
     color: var(--text-muted);
-    max-width: 30ch;
+    max-width: 31ch;
   }
 
   .modal-cta {
@@ -563,6 +638,7 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
+    cursor: pointer;
     box-shadow: 0 12px 28px -10px rgba(212, 175, 55, 0.55);
     transition: transform 120ms var(--ease-spring), filter 160ms ease;
   }
@@ -591,6 +667,10 @@
     color: var(--text-muted);
     font: 500 13.5px/1 var(--font-body);
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     transition: color 150ms ease, background-color 150ms ease;
   }
 
@@ -599,11 +679,88 @@
     background: rgba(255, 255, 255, 0.04);
   }
 
+  /* ---------- Report Issue Modal Specifics ---------- */
+  .issue-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+
+  .issue-chip {
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--line);
+    color: var(--text-muted);
+    font: 500 12.5px/1 var(--font-body);
+    cursor: pointer;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease,
+      transform 120ms var(--ease-spring);
+  }
+
+  .issue-chip:hover {
+    color: var(--text);
+    border-color: var(--line-hi);
+  }
+
+  .issue-chip:active {
+    transform: scale(0.95);
+  }
+
+  .issue-chip[aria-pressed="true"] {
+    background: var(--gold-dim);
+    border-color: var(--gold);
+    color: var(--gold-hi);
+  }
+
+  .issue-note {
+    width: 100%;
+    min-height: 72px;
+    max-height: 130px;
+    resize: vertical;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    border-radius: 12px;
+    background: rgba(9, 8, 10, 0.75);
+    border: 1px solid var(--line);
+    color: var(--text);
+    /* 16px prevents iOS Safari from auto-zooming the page when focusing input */
+    font: 400 16px/1.4 var(--font-body);
+    transition: border-color 160ms ease;
+  }
+
+  .issue-note::placeholder {
+    color: var(--text-dim);
+  }
+
+  .issue-note:focus {
+    outline: none;
+    border-color: var(--gold);
+  }
+
+  .email-badge {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--gold-hi);
+  }
+
   /* ---------- Responsive Mobile Tuning ---------- */
-  @media (max-width: 560px) {
+  @media (max-width: 600px) {
     body {
       padding: 10px 12px;
       gap: 10px;
+    }
+
+    /* Lighter backdrop blur radius on mobile GPUs prevents frame stutter over live video */
+    .modal-backdrop {
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      background: rgba(5, 4, 6, 0.84);
     }
 
     .stream-meta,
@@ -615,9 +772,18 @@
       gap: 8px;
     }
 
-    .btn {
-      flex: 1 1 auto;
-      padding: 0 14px;
+    .btn-whatsapp {
+      flex: 1 1 100%;
+    }
+
+    .action-group {
+      width: 100%;
+      margin-left: 0;
+    }
+
+    .action-group .btn {
+      flex: 1 1 50%;
+      padding: 0 12px;
       font-size: 13.5px;
     }
   }
@@ -645,16 +811,21 @@
 <div class="player" id="player">
   <div class="stage" id="stage">
 
-    <!-- ============ PASTE YOUR IFRAME BELOW THIS LINE ============
-         - "allow" is set here in the HTML so it applies from the very first load.
-         - allowfullscreen is left out on purpose: the player's own fullscreen button is
-           disabled, so viewers use the Fullscreen button below and the logo + marquee stay visible.
-           To unlock the player's own fullscreen, add the word  allowfullscreen  to the iframe. -->
-<iframe src="https://thedaddy.pk/cast/stream-885.php" width="100%" height="100%" style="border:0;" allow="autoplay; encrypted-media; picture-in-picture"></iframe>
+    <!-- ============ PASTE YOUR IFRAME BELOW THIS LINE ============ -->
+    <iframe
+      id="streamFrame"
+      src="https://thedaddy.pk/cast/stream-885.php"
+      width="100%"
+      height="100%"
+      style="border:0;"
+      fetchpriority="high"
+      loading="eager"
+      allow="autoplay; encrypted-media; picture-in-picture">
+    </iframe>
     <!-- ============ PASTE YOUR IFRAME ABOVE THIS LINE ============ -->
 
     <!-- Logo is served from this repo (same origin as the page) -->
-    <img class="wm" src="logo.webp" alt="" decoding="async" draggable="false" onerror="this.remove()">
+    <img class="wm" src="logo.webp" alt="" decoding="async" fetchpriority="low" draggable="false" onerror="this.remove()">
   </div>
 
   <div class="marquee" aria-label="WhatsApp channel"><div class="track" id="track"></div></div>
@@ -668,13 +839,23 @@
     <span>Join WhatsApp Channel</span>
   </a>
 
-  <button class="btn btn-fs" id="fsBtn" type="button">
-    <svg id="fsIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-    </svg>
-    <span id="fsLabel">Fullscreen</span>
-    <span class="kbd-tag" aria-hidden="true">DBL-CLICK</span>
-  </button>
+  <div class="action-group">
+    <button class="btn btn-report" id="reportBtn" type="button" aria-haspopup="dialog" aria-controls="reportModal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+        <line x1="4" y1="22" x2="4" y2="15"/>
+      </svg>
+      <span>Report Issue</span>
+    </button>
+
+    <button class="btn btn-fs" id="fsBtn" type="button">
+      <svg id="fsIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+      </svg>
+      <span id="fsLabel">Fullscreen</span>
+      <span class="kbd-tag" aria-hidden="true">DBL-CLICK</span>
+    </button>
+  </div>
 </div>
 
 <!-- Non-blocking WhatsApp Channel Join Modal -->
@@ -707,14 +888,59 @@
   </div>
 </div>
 
+<!-- Stream Issue / Feedback Modal -->
+<div class="modal-backdrop" id="reportModal" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle" aria-describedby="reportModalDesc" aria-hidden="true">
+  <div class="modal-card">
+    <button class="modal-close" id="reportCloseBtn" type="button" aria-label="Close issue reporter">
+      <span class="modal-close-pill">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </span>
+    </button>
+
+    <div class="modal-icon-wrap" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/>
+      </svg>
+    </div>
+
+    <span class="modal-eyebrow">Direct Broadcast Support</span>
+    <h2 class="modal-title" id="reportModalTitle">Report Stream Issue</h2>
+    <p class="modal-copy" id="reportModalDesc">Select what is happening and send a direct report to <span class="email-badge">thepredictor@aster.cx</span></p>
+
+    <div class="issue-chips" role="group" aria-label="Issue category">
+      <button type="button" class="issue-chip" aria-pressed="true" data-issue="Stream Offline">Stream Offline</button>
+      <button type="button" class="issue-chip" aria-pressed="false" data-issue="Buffering / Lag">Buffering / Lag</button>
+      <button type="button" class="issue-chip" aria-pressed="false" data-issue="Audio Issue">Audio Issue</button>
+      <button type="button" class="issue-chip" aria-pressed="false" data-issue="Video Frozen">Video Frozen</button>
+      <button type="button" class="issue-chip" aria-pressed="false" data-issue="Other Feedback">Other</button>
+    </div>
+
+    <textarea class="issue-note" id="issueNote" rows="2" placeholder="Optional details (e.g., error message, device, or feedback)..."></textarea>
+
+    <a class="modal-cta" id="sendReportBtn" href="mailto:thepredictor@aster.cx">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+      </svg>
+      <span>Send Report via Email</span>
+    </a>
+
+    <button class="modal-later" id="copyEmailBtn" type="button">
+      <span id="copyEmailText">Or copy email: thepredictor@aster.cx</span>
+    </button>
+  </div>
+</div>
+
 <script>
   /* ---------- Edit these ---------- */
-  const CHANNEL_URL  = "https://whatsapp.com/channel/0029VaEQJcJEVccLFGqfTo0w";
-  const CHANNEL_TEXT = "Join our WhatsApp channel for live updates";
+  const CHANNEL_URL   = "https://whatsapp.com/channel/0029VaEQJcJEVccLFGqfTo0w";
+  const CHANNEL_TEXT  = "Join our WhatsApp channel for live updates";
+  const SUPPORT_EMAIL = "thepredictor@aster.cx";
+  const STREAM_NAME   = "Live";
   /* -------------------------------- */
 
   const player          = document.getElementById("player");
   const stage           = document.getElementById("stage");
+  const streamFrame     = document.getElementById("streamFrame");
   const fsBtn           = document.getElementById("fsBtn");
   const fsLabel         = document.getElementById("fsLabel");
   const fsIcon          = document.getElementById("fsIcon");
@@ -724,11 +950,26 @@
   const waCloseBtn      = document.getElementById("waCloseBtn");
   const waLaterBtn      = document.getElementById("waLaterBtn");
 
+  /* Issue Reporter Elements */
+  const reportBtn       = document.getElementById("reportBtn");
+  const reportModal     = document.getElementById("reportModal");
+  const reportCloseBtn  = document.getElementById("reportCloseBtn");
+  const issueChips      = document.querySelectorAll(".issue-chip");
+  const issueNote       = document.getElementById("issueNote");
+  const sendReportBtn   = document.getElementById("sendReportBtn");
+  const copyEmailBtn    = document.getElementById("copyEmailBtn");
+  const copyEmailText   = document.getElementById("copyEmailText");
+
+  /* Stop stage spinner once iframe finishes initial load */
+  streamFrame.addEventListener("load", () => {
+    stage.classList.add("is-loaded");
+  }, { once: true });
+
   /* Keep dynamic channel URL synced across all CTAs */
   waPersistentBtn.href = CHANNEL_URL;
   waJoinBtn.href       = CHANNEL_URL;
 
-  /* Marquee: two identical halves so the loop is seamless (built in one pass) */
+  /* Marquee: two identical halves so the loop is seamless */
   const link = `<a href="${CHANNEL_URL}" target="_blank" rel="noopener noreferrer">${CHANNEL_TEXT}</a>`;
   const hiddenLink = link.replace("<a ", '<a aria-hidden="true" tabindex="-1" ');
   document.getElementById("track").innerHTML = link.repeat(6) + hiddenLink.repeat(6);
@@ -744,9 +985,9 @@
       ? '<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>'
       : '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>';
 
-    /* Hide persistent WhatsApp button in fullscreen & restore on exit */
     document.body.classList.toggle("is-fullscreen", active);
     waPersistentBtn.hidden = active;
+    reportBtn.hidden       = active;
   }
 
   function toggleFs() {
@@ -766,7 +1007,7 @@
         player.classList.add("pseudo-fs");
       }
     } else {
-      player.classList.add("pseudo-fs");   // iPhone Safari fallback
+      player.classList.add("pseudo-fs"); // iPhone Safari fallback
     }
     setTimeout(syncLabel, 50);
   }
@@ -776,36 +1017,112 @@
   document.addEventListener("fullscreenchange", syncLabel);
   document.addEventListener("webkitfullscreenchange", syncLabel);
 
-  /* ---------- WhatsApp Join Popup Logic (Non-blocking) ---------- */
-  function openModal() {
-    waModal.classList.add("is-open");
-    waModal.setAttribute("aria-hidden", "false");
+  /* ---------- Modal Helper (Pauses background GPU aura while open) ---------- */
+  function syncBodyModalState() {
+    const anyOpen = waModal.classList.contains("is-open") || reportModal.classList.contains("is-open");
+    document.body.classList.toggle("modal-active", anyOpen);
   }
 
-  function closeModal() {
+  function openWaModal() {
+    if (reportModal.classList.contains("is-open")) return;
+    waModal.classList.add("is-open");
+    waModal.setAttribute("aria-hidden", "false");
+    syncBodyModalState();
+  }
+
+  function closeWaModal() {
     if (!waModal.classList.contains("is-open")) return;
     waModal.classList.remove("is-open");
     waModal.setAttribute("aria-hidden", "true");
+    syncBodyModalState();
   }
 
-  /* Schedule popup after initial paint so the iframe stream connection starts first */
-  requestAnimationFrame(() => {
-    setTimeout(openModal, 120);
+  /* Schedule WhatsApp popup during browser idle time so mobile stream connection gets 100% CPU/network priority */
+  const schedulePopup = window.requestIdleCallback || (cb => setTimeout(cb, 350));
+  window.addEventListener("DOMContentLoaded", () => {
+    schedulePopup(() => setTimeout(openWaModal, 250), { timeout: 1200 });
+  }, { once: true });
+
+  waCloseBtn.addEventListener("click", closeWaModal);
+  waLaterBtn.addEventListener("click", closeWaModal);
+  waJoinBtn.addEventListener("click", () => setTimeout(closeWaModal, 60));
+  waModal.addEventListener("click", e => {
+    if (e.target === waModal) closeWaModal();
   });
 
-  waCloseBtn.addEventListener("click", closeModal);
-  waLaterBtn.addEventListener("click", closeModal);
-  waJoinBtn.addEventListener("click", () => {
-    setTimeout(closeModal, 60);
+  /* ---------- Report Issue / Feedback Modal Logic ---------- */
+  let selectedIssue = "Stream Offline";
+
+  function updateMailtoHref() {
+    const note = issueNote.value.trim();
+    const subject = `[Stream Issue] ${STREAM_NAME} - ${selectedIssue}`;
+    const bodyLines = [
+      `Channel: ${STREAM_NAME}`,
+      `Issue Category: ${selectedIssue}`,
+      note ? `Details: ${note}` : `Details: (No additional notes provided)`,
+      `---`,
+      `Time (UTC): ${new Date().toISOString()}`,
+      `Viewport: ${window.innerWidth}x${window.innerHeight}`
+    ];
+    sendReportBtn.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join("\n"))}`;
+  }
+
+  function openReportModal() {
+    closeWaModal();
+    updateMailtoHref();
+    reportModal.classList.add("is-open");
+    reportModal.setAttribute("aria-hidden", "false");
+    syncBodyModalState();
+  }
+
+  function closeReportModal() {
+    if (!reportModal.classList.contains("is-open")) return;
+    reportModal.classList.remove("is-open");
+    reportModal.setAttribute("aria-hidden", "true");
+    syncBodyModalState();
+  }
+
+  issueChips.forEach(chip => {
+    chip.addEventListener("click", () => {
+      issueChips.forEach(c => c.setAttribute("aria-pressed", "false"));
+      chip.setAttribute("aria-pressed", "true");
+      selectedIssue = chip.dataset.issue;
+      updateMailtoHref();
+    });
   });
-  waModal.addEventListener("click", e => {
-    if (e.target === waModal) closeModal();
+
+  issueNote.addEventListener("input", updateMailtoHref);
+
+  reportBtn.addEventListener("click", openReportModal);
+  reportCloseBtn.addEventListener("click", closeReportModal);
+  sendReportBtn.addEventListener("click", () => setTimeout(closeReportModal, 120));
+  reportModal.addEventListener("click", e => {
+    if (e.target === reportModal) closeReportModal();
+  });
+
+  copyEmailBtn.addEventListener("click", () => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(SUPPORT_EMAIL).then(() => {
+        copyEmailText.textContent = "Copied thepredictor@aster.cx!";
+        copyEmailBtn.style.color = "var(--live)";
+        setTimeout(() => {
+          copyEmailText.textContent = `Or copy email: ${SUPPORT_EMAIL}`;
+          copyEmailBtn.style.color = "";
+        }, 2200);
+      });
+    } else {
+      window.location.href = sendReportBtn.href;
+    }
   });
 
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") {
+      if (reportModal.classList.contains("is-open")) {
+        closeReportModal();
+        return;
+      }
       if (waModal.classList.contains("is-open")) {
-        closeModal();
+        closeWaModal();
         return;
       }
       if (player.classList.contains("pseudo-fs")) {
