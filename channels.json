@@ -1,6 +1,6 @@
 {
   "branch": "main",
-  "_note": "Source of truth for the channel list. index.html is GENERATED from this file (admin/add-channel.js or the admin dashboard keep both in sync). The GitHub owner/repo/branch used to publish are stored LOCALLY in your browser's localStorage by the admin dashboard (and in channels.json only as a convenience hint) \u2014 never put a token in this public file; tokens live only in the encrypted vault admin/token.enc, GH_TOKEN env, or your browser's localStorage.",
+  "_note": "Source of truth for the channel list. index.html is GENERATED from this file (admin/add-channel.js or the admin dashboard keep both in sync). The GitHub owner/repo/branch used to publish are stored LOCALLY in your browser's localStorage by the admin dashboard (and in channels.json only as a convenience hint) — never put a token in this public file; tokens live only in the encrypted vault admin/token.enc, GH_TOKEN env, or your browser's localStorage.",
   "channels": [
     {
       "file": "abudhabisports1uae.html",
@@ -35,8 +35,16 @@
       "name": "Dazn LaLiga"
     },
     {
+      "file": "diemasport3bulgaria.html",
+      "name": "Diema Sport 3 Bulgaria"
+    },
+    {
       "file": "elevensports3poland.html",
       "name": "Eleven Sports 3 Poland"
+    },
+    {
+      "file": "espn1nl.html",
+      "name": "ESPN 1 NL"
     },
     {
       "file": "espn2usa.html",
@@ -123,12 +131,24 @@
       "name": "Sony TEN 2"
     },
     {
+      "file": "sport1israel.html",
+      "name": "Sport 1 Israel"
+    },
+    {
+      "file": "sport2israel.html",
+      "name": "Sport 2 Israel"
+    },
+    {
       "file": "sport5israel.html",
       "name": "Sport 5 (Israel)"
     },
     {
       "file": "sport5plusisrael.html",
       "name": "Sport 5 Plus Israel"
+    },
+    {
+      "file": "sportklub1croatia.html",
+      "name": "Sport Klub 1 Croatia"
     },
     {
       "file": "sporttv1.html",
@@ -159,6 +179,10 @@
       "name": "SporTV (Brazil)"
     },
     {
+      "file": "starsports1in.html",
+      "name": "Star Sports 1 IN"
+    },
+    {
       "file": "supersportpremierleague.html",
       "name": "Super Sport Premier League"
     },
@@ -173,6 +197,18 @@
     {
       "file": "tf1france.html",
       "name": "TF1 (France)"
+    },
+    {
+      "file": "tntsports.html",
+      "name": "TNT Sports"
+    },
+    {
+      "file": "tntsports2uk.html",
+      "name": "TNT Sports 2 UK"
+    },
+    {
+      "file": "tntsports3uk.html",
+      "name": "TNT Sports 3 UK"
     },
     {
       "file": "tv3sportdenmark.html",
@@ -193,18 +229,6 @@
     {
       "file": "ziggosportnl.html",
       "name": "Ziggo Sport (NL)"
-    },
-    {
-      "file": "tntsports.html",
-      "name": "TNT Sports"
-    },
-    {
-      "file": "tntsports2uk.html",
-      "name": "TNT Sports 2 UK"
-    },
-    {
-      "file": "tntsports3uk.html",
-      "name": "TNT Sports 3 UK"
     }
   ]
 }
