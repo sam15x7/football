@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#050507">
   <title>The Predictor</title>
-  <!-- Channel links above </nav> are GENERATED from channels.json by the backend admin scripts (admin/add-channel.js, admin/sync-index.js). Do not edit the list by hand. -->
+  <!-- Channel links inside #channels are GENERATED from channels.json by the backend admin scripts (admin/add-channel.js, admin/sync-index.js). Do not edit the list by hand. -->
   <meta name="description" content="Directory of live sports channels. Click a channel to open its player.">
   <link rel="icon" href="logo.webp" type="image/webp">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -83,7 +82,7 @@
       white-space: nowrap;
     }
 
-    /* High-visibility focus ring (Priority 1 Accessibility & HIG) */
+    /* High-visibility focus ring */
     :focus-visible {
       outline: 2px solid var(--gold-hi);
       outline-offset: 3px;
@@ -706,7 +705,493 @@
     }
 
     /* ==========================================================================
-     * 4. Channel Cards (<nav class="grid" id="channels">
+     * 4. Channel Cards Grid (#channels)
+     * ========================================================================== */
+    nav.grid {
+      max-width: 68rem;
+      margin: 1rem auto 0;
+      padding: 0 1rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr));
+      gap: 0.875rem;
+    }
+
+    nav.grid.compact-view {
+      grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+      gap: 0.5625rem;
+    }
+
+    nav.grid a {
+      --tx: 0px;
+      --ty: 0px;
+      --sc: 1;
+      --spot-x: 50%;
+      --spot-y: 50%;
+      --spot-a: 0;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 0.875rem;
+      min-height: 6.5rem;
+      padding: 1rem 1rem 0.9375rem 1.125rem;
+      border-radius: 1.125rem;
+      color: var(--text-primary);
+      text-decoration: none;
+      word-break: break-word;
+      font: 600 1.0625rem/1.24 var(--font-sans);
+      letter-spacing: -0.012em;
+      border: 1px solid var(--border-hairline);
+      border-top-color: var(--specular-top);
+      background:
+        radial-gradient(15rem circle at var(--spot-x) var(--spot-y), rgba(212, 175, 55, calc(var(--spot-a) * 0.17)), transparent 70%),
+        var(--surface-glass);
+      -webkit-backdrop-filter: blur(18px) saturate(165%);
+      backdrop-filter: blur(18px) saturate(165%);
+      box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.48);
+      transform: translate3d(var(--tx), var(--ty), 0) scale(var(--sc));
+      transition:
+        background-color 180ms ease,
+        border-color 180ms ease,
+        box-shadow 220ms ease;
+      will-change: transform;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    nav.grid.compact-view a {
+      flex-direction: row;
+      align-items: center;
+      min-height: 4rem;
+      padding: 0.625rem 0.875rem 0.625rem 1rem;
+      border-radius: 0.875rem;
+    }
+
+    /* Card Internal Telemetry Structure (injected progressively) */
+    .ch-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      width: 100%;
+    }
+
+    nav.grid.compact-view .ch-top {
+      width: auto;
+      flex: none;
+    }
+
+    .ch-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4375rem;
+    }
+
+    .ch-num {
+      font: 600 0.72rem/1 var(--font-mono);
+      color: var(--text-tertiary);
+      letter-spacing: 0.04em;
+    }
+
+    /* HIG Pin Button inside Card (44x44px hit region via negative margin) */
+    .pin-btn {
+      position: relative;
+      z-index: 2;
+      width: 2.75rem;
+      height: 2.75rem;
+      margin: -0.625rem -0.5rem -0.625rem 0;
+      border: 0;
+      background: transparent;
+      color: var(--text-tertiary);
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: color 150ms ease, transform 120ms ease;
+    }
+
+    nav.grid.compact-view .pin-btn {
+      display: none;
+    }
+
+    .pin-btn:hover {
+      color: var(--gold-hi);
+    }
+
+    .pin-btn:active {
+      transform: scale(0.86);
+    }
+
+    .pin-btn[aria-pressed="true"] {
+      color: var(--gold);
+    }
+
+    .pin-btn svg {
+      width: 0.95rem;
+      height: 0.95rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .pin-btn[aria-pressed="true"] svg {
+      fill: var(--gold);
+    }
+
+    .ch-bottom {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    nav.grid.compact-view .ch-bottom {
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .ch-title {
+      flex: 1;
+      min-width: 0;
+      font: 600 1.0625rem/1.22 var(--font-sans);
+      color: var(--text-primary);
+      letter-spacing: -0.014em;
+    }
+
+    nav.grid.compact-view .ch-title {
+      font-size: 0.96875rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ch-play {
+      flex: none;
+      width: 2.125rem;
+      height: 2.125rem;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.065);
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      display: grid;
+      place-items: center;
+      color: var(--text-primary);
+      transition:
+        background-color 180ms ease,
+        border-color 180ms ease,
+        color 180ms ease,
+        transform 220ms var(--ease-spring);
+    }
+
+    .ch-play svg {
+      width: 0.875rem;
+      height: 0.875rem;
+      fill: currentColor;
+      transform: translateX(1px);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      nav.grid a:hover {
+        background-color: var(--surface-hover);
+        border-color: var(--gold-border);
+        box-shadow: 0 14px 32px -12px rgba(0, 0, 0, 0.72);
+      }
+
+      nav.grid a:hover .ch-play {
+        background-color: var(--gold);
+        border-color: var(--gold-hi);
+        color: #050507;
+        transform: scale(1.07);
+      }
+    }
+
+    nav.grid a:active,
+    nav.grid a.is-pressed {
+      background-color: var(--surface-active);
+      border-color: var(--gold-hi);
+    }
+
+    nav.grid a:active .ch-play,
+    nav.grid a.is-pressed .ch-play {
+      background-color: var(--gold);
+      border-color: var(--gold-hi);
+      color: #050507;
+      transform: scale(0.94);
+    }
+
+    nav.grid a.hidden {
+      display: none;
+    }
+
+    /* ---------- Actionable Empty State ---------- */
+    .empty-card {
+      max-width: 28rem;
+      margin: 3rem auto 0;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      background: var(--surface-glass);
+      border: 1px solid var(--border-hairline);
+      border-top-color: var(--specular-top);
+      border-radius: 1.25rem;
+      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
+    }
+
+    .empty-title {
+      font: 600 1.0625rem/1.3 var(--font-sans);
+      color: var(--text-primary);
+    }
+
+    .empty-desc {
+      margin-top: 0.375rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .reset-btn {
+      margin-top: 1.125rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.75rem;
+      padding: 0 1.125rem;
+      border-radius: 999px;
+      border: 1px solid var(--gold-border);
+      background: var(--gold-surface);
+      color: var(--gold-hi);
+      font: 600 0.875rem/1 var(--font-sans);
+      cursor: pointer;
+      transition: transform 100ms ease, background-color 150ms ease;
+    }
+
+    .reset-btn:hover {
+      background: rgba(212, 175, 55, 0.24);
+    }
+
+    .reset-btn:active {
+      transform: scale(0.96);
+    }
+
+    .end {
+      height: max(4.5rem, calc(env(safe-area-inset-bottom) + 2.5rem));
+    }
+
+    /* ---------- Responsive Breakpoints ---------- */
+    @media (max-width: 640px) {
+      .action-btn span,
+      .pin-filter-label {
+        display: none;
+      }
+      .action-btn {
+        width: 3.125rem;
+        padding: 0;
+      }
+      .pin-filter-btn {
+        padding: 0 0.75rem;
+      }
+      .kbd-hint,
+      .view-toggle {
+        display: none;
+      }
+      nav.grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.625rem;
+        padding: 0 0.75rem;
+      }
+      nav.grid a {
+        min-height: 5.875rem;
+        padding: 0.875rem;
+        border-radius: 1rem;
+      }
+      .ch-title {
+        font-size: 0.9375rem;
+      }
+      .ch-play {
+        width: 1.875rem;
+        height: 1.875rem;
+      }
+    }
+
+    /* ---------- Keyframes ---------- */
+    @keyframes ken-burns {
+      0% {
+        transform: scale(1) translate3d(0, 0, 0);
+      }
+      100% {
+        transform: scale(1.12) translate3d(-2%, -1%, 0);
+      }
+    }
+
+    @keyframes breathe-life {
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.018);
+      }
+    }
+
+    @keyframes float-levitate {
+      0%, 100% {
+        transform: translate3d(0, 0, 0);
+      }
+      50% {
+        transform: translate3d(0, -7px, 0);
+      }
+    }
+
+    @keyframes live-pulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.45;
+        transform: scale(0.88);
+      }
+    }
+
+    /* ==========================================================================
+     * 5. Apple HIG Accessibility Overrides (Reduced Motion, Transparency, Contrast)
+     * ========================================================================== */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation: none !important;
+        transition: opacity 160ms ease, background-color 160ms ease, border-color 160ms ease !important;
+      }
+      html {
+        scroll-behavior: auto;
+      }
+      nav.grid a,
+      .emblem,
+      .emblem .halo,
+      .emblem .ring,
+      .emblem .parallax,
+      .mini {
+        transform: none !important;
+        filter: none !important;
+      }
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+      :root {
+        --surface-glass: #15151b;
+        --surface-glass-subtle: #121217;
+        --surface-hover: #1e1e26;
+        --surface-active: #282833;
+        --surface-docked: #181820;
+      }
+      .bar,
+      .emblem,
+      .action-btn,
+      .pin-filter-btn,
+      .view-toggle,
+      nav.grid a,
+      .empty-card {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+      }
+    }
+
+    @media (prefers-contrast: more) {
+      :root {
+        --border-hairline: rgba(255, 255, 255, 0.42);
+        --gold-border: #f6e294;
+        --text-secondary: rgba(255, 255, 255, 0.9);
+        --text-tertiary: rgba(255, 255, 255, 0.75);
+      }
+      nav.grid a,
+      .bar,
+      .pin-filter-btn,
+      .action-btn {
+        border-width: 1.5px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div id="backdrop" aria-hidden="true">
+  <div class="ken-burns-stage"></div>
+  <canvas id="fx"></canvas>
+  <div class="vignette"></div>
+</div>
+
+<div class="page">
+  <header class="hero">
+    <div class="telemetry-pill" aria-hidden="true">
+      <span class="live-dot"></span>
+      <span>Live Broadcast Directory</span>
+    </div>
+    <div class="emblem" id="emblem" title="Drag and flick">
+      <span class="halo"></span>
+      <span class="ring base"></span>
+      <span class="ring dash"></span>
+      <div class="parallax">
+        <div class="float-wrap">
+          <img class="logo" src="logo.webp" alt="" decoding="async" fetchpriority="high" onerror="document.documentElement.classList.add('nologo')">
+        </div>
+      </div>
+    </div>
+    <h1>The Predictor</h1>
+    <p class="tag">Live sports feeds. Select any channel below to launch its broadcast player.</p>
+  </header>
+
+  <!-- Channels are added from the backend only (see admin/README.md).
+       This page is public: it just renders the list — no forms, no tokens. -->
+  <div class="chrome-deck" id="chromeDeck">
+    <div class="bar-shell">
+      <div class="bar-row">
+        <div class="bar" id="bar">
+          <button class="mini" id="top" type="button" aria-label="Scroll to top">
+            <span class="mini-inner">
+              <img src="logo.webp" alt="" onerror="document.documentElement.classList.add('nologo')">
+            </span>
+          </button>
+          <div class="field">
+            <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+            <label for="q" class="sr">Search channels</label>
+            <input id="q" type="search" placeholder="Search channels…" autocomplete="off" spellcheck="false">
+            <button class="clear-btn" id="clearBtn" type="button" aria-label="Clear search query">
+              <span class="clear-btn-glyph">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>
+              </span>
+            </button>
+            <kbd class="kbd-hint" aria-hidden="true">/</kbd>
+          </div>
+          <span class="count" id="count" aria-live="polite"></span>
+        </div>
+
+        <button class="pin-filter-btn" id="pinnedFilterBtn" type="button" aria-pressed="false" aria-label="Show pinned channels" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <span class="pin-filter-label">Pinned</span>
+          <span class="pin-filter-count" id="pinnedCount">0</span>
+        </button>
+
+        <button class="action-btn" id="randomBtn" type="button" aria-label="Tune Random Channel">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>
+          </svg>
+          <span>Tune Random</span>
+        </button>
+
+        <div class="view-toggle" role="group" aria-label="Layout view">
+          <button class="view-btn" id="gridViewBtn" type="button" aria-pressed="true" aria-label="Grid view">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          </button>
+          <button class="view-btn" id="listViewBtn" type="button" aria-pressed="false" aria-label="Compact list view">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<nav class="grid" id="channels" aria-label="Channel list">
   <a href="abudhabisports1uae.html">Abu Dhabi Sports 1 UAE</a>
   <a href="appletv.html">Apple TV</a>
   <a href="arenasport3croatia.html">Arena Sport 3 Croatia</a>
@@ -752,19 +1237,15 @@
   <a href="sporttv5.html">Sport TV 5</a>
   <a href="sporttv6.html">Sport TV 6</a>
   <a href="sportvbrasil.html">SporTV (Brazil)</a>
-  <a href="starsports1in.html">Star Sports 1 IN</a>
   <a href="supersportpremierleague.html">Super Sport Premier League</a>
   <a href="supersportlaliga.html">SuperSport LaLiga</a>
   <a href="telefeargentina.html">Telefe Argentina</a>
   <a href="tf1france.html">TF1 (France)</a>
-  <a href="tntsports.html">TNT Sports</a>
-  <a href="tntsports2uk.html">TNT Sports 2 UK</a>
-  <a href="tntsports3uk.html">TNT Sports 3 UK</a>
   <a href="tv3sportdenmark.html">TV 3 Sport Denmark</a>
   <a href="tycsportsargentina.html">TyC Sports (Argentina)</a>
   <a href="viaplaysports2uk.html">Viaplay Sports 2 (UK)</a>
   <a href="ZDFDE.html">ZDF (Germany)</a>
-  <a href="ziggosportnl.html">Ziggo Sport (NL)</a>
+  <a href="ziggosportnl.html">Ziggo Sport NL</a>
 </nav>
 
   <div class="empty-card" id="empty" hidden>
