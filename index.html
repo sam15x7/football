@@ -15,7 +15,6 @@
   <style>
     :root {
       color-scheme: dark;
-      /* Studio Token System — Tuned for Compositor-Only 240Hz Rendering */
       --bg-deck: #050507;
       --surface-card: #101015;
       --surface-card-hover: #16161e;
@@ -79,7 +78,6 @@
       white-space: nowrap;
     }
 
-    /* High-visibility focus ring */
     :focus-visible {
       outline: 2px solid var(--gold-hi);
       outline-offset: 3px;
@@ -325,7 +323,6 @@
       background: var(--surface-docked);
     }
 
-    /* HIG Button: Back to top mini logo (44x44px hit target) */
     .mini {
       flex: none;
       width: 0;
@@ -422,7 +419,6 @@
       display: none;
     }
 
-    /* HIG Clear Search Button: 44x44px hit target wrapping 22x22px visual circle */
     .clear-btn {
       position: relative;
       flex: none;
@@ -504,7 +500,6 @@
       white-space: nowrap;
     }
 
-    /* Pinned Filter Toggle Button */
     .pin-filter-btn {
       flex: none;
       display: inline-flex;
@@ -563,7 +558,6 @@
       opacity: 0.8;
     }
 
-    /* HIG Prominent Action Button: "Tune Random" (min 44px height, explicit verb label) */
     .action-btn {
       flex: none;
       display: inline-flex;
@@ -701,7 +695,6 @@
       -webkit-user-select: none;
     }
 
-    /* Pre-rendered GPU Gold Glow Overlay (animates opacity only — zero repaint) */
     nav.grid a::before {
       content: "";
       position: absolute;
@@ -721,7 +714,6 @@
       border-radius: 0.875rem;
     }
 
-    /* Card Internal Telemetry Structure (injected progressively) */
     .ch-top {
       position: relative;
       z-index: 1;
@@ -749,7 +741,6 @@
       letter-spacing: 0.04em;
     }
 
-    /* HIG Pin Button inside Card (44x44px hit region via negative margin) */
     .pin-btn {
       position: relative;
       z-index: 2;
@@ -974,7 +965,6 @@
       }
     }
 
-    /* ---------- Subtle GPU Keyframes ---------- */
     @keyframes float-levitate {
       0%, 100% {
         transform: translate3d(0, 0, 0);
@@ -1112,8 +1102,6 @@
   <a href="beinsportsmena2(eng).html">beIN Sports MENA 2 (English)</a>
   <a href="beinsportsmena3.html">beIN Sports MENA 3</a>
   <a href="beinsportsusa.html">beIN Sports USA</a>
-  <a href="dazn2barde.html">DAZN 2 Bar DE</a>
-  <a href="dazneleven1portugal.html">Dazn Eleven 1 Portugal</a>
   <a href="daznlaliga.html">Dazn LaLiga</a>
   <a href="diemasport3bulgaria.html">Diema Sport 3 Bulgaria</a>
   <a href="elevensports3poland.html">Eleven Sports 3 Poland</a>
@@ -1141,7 +1129,6 @@
   <a href="skysportsf1uk.html">Sky Sports F1 UK</a>
   <a href="sonyten1.html">Sony TEN 1</a>
   <a href="sonyten2.html">Sony TEN 2</a>
-  <a href="sonyten3.html">SONY TEN 3</a>
   <a href="sport1israel.html">Sport 1 Israel</a>
   <a href="sport2israel.html">Sport 2 Israel</a>
   <a href="sport5israel.html">Sport 5 (Israel)</a>
@@ -1180,9 +1167,10 @@
 <script>
 (function () {
   var $ = function (s) { return document.querySelector(s); };
-  var links = Array.prototype.slice.call(document.querySelectorAll('#channels a'));
+  var nav = $('#channels');
+  var links = Array.prototype.slice.call(nav.querySelectorAll('a'));
   var countEl = $('#count'), emptyEl = $('#empty'), queryEl = $('#q'), clearBtn = $('#clearBtn');
-  var chromeDeck = $('#chromeDeck'), nav = $('#channels');
+  var chromeDeck = $('#chromeDeck');
   var emblem = $('#emblem'), emblemHalo = $('#emblemHalo');
   var emblemRingBase = $('#emblemRingBase'), emblemRingDash = $('#emblemRingDash');
   var emblemParallax = $('#emblemParallax');
@@ -1195,8 +1183,7 @@
   mqlReduced.addEventListener('change', function (e) { REDUCED = e.matches; });
 
   /* ==========================================================================
-   * 1. Progressive Channel Numbering & Saved Pins Enrichment
-   *    (Leaves original HTML <a> list untouched in source for backend scripts)
+   * 1. Progressive Channel Numbering, Saved Pins & Live channels.json Sync
    * ========================================================================== */
   var STORAGE_KEY = 'predictor_pinned_channels_v1';
   var pinnedSet = new Set();
@@ -1213,8 +1200,8 @@
     } catch (e) {}
   }
 
-  links.forEach(function (a, idx) {
-    var rawTitle = a.textContent.trim();
+  function decorateLink(a, idx) {
+    var rawTitle = (a.dataset.title || a.textContent || '').trim();
     var href = a.getAttribute('href') || '';
     var num = String(idx + 1).padStart(2, '0');
     var hay = (rawTitle + ' ' + href + ' ch' + num).toLowerCase();
@@ -1242,7 +1229,9 @@
       '</div>';
 
     a.querySelector('.ch-title').textContent = rawTitle;
-  });
+  }
+
+  links.forEach(decorateLink);
 
   function syncPinnedUI() {
     var pinTotal = 0;
@@ -1293,6 +1282,96 @@
   syncPinnedUI();
   applyFilter();
 
+  /* ---------- Auto-Sync with channels.json at Runtime ----------
+   * Ensures any channel added via admin/index.html shows up on the frontend
+   * immediately even if index.html is cached or out of sync.
+   * ------------------------------------------------------------- */
+  function parseChannelEntry(item, keyHint) {
+    if (!item) return null;
+    if (typeof item === 'string' && keyHint) {
+      var h = /\.html$/i.test(keyHint) ? keyHint : keyHint + '.html';
+      return { name: item.trim(), href: h };
+    }
+    if (typeof item === 'object') {
+      var name = String(item.name || item.title || item.label || item.channel || '').trim();
+      var rawHref = String(item.file || item.href || item.filename || item.page || item.path || item.slug || item.id || keyHint || '').trim();
+      if (!name || !rawHref) return null;
+      var href = /\.html$/i.test(rawHref) ? rawHref : rawHref + '.html';
+      return { name: name, href: href };
+    }
+    return null;
+  }
+
+  function syncFromChannelsJson() {
+    if (!window.fetch) return;
+    fetch('channels.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data) return;
+        var rawList = Array.isArray(data)
+          ? data
+          : (Array.isArray(data.channels) ? data.channels : null);
+
+        var parsed = [];
+        if (rawList) {
+          for (var i = 0; i < rawList.length; i++) {
+            var entry = parseChannelEntry(rawList[i]);
+            if (entry) parsed.push(entry);
+          }
+        } else if (typeof data === 'object') {
+          Object.keys(data).forEach(function (k) {
+            var entry = parseChannelEntry(data[k], k);
+            if (entry) parsed.push(entry);
+          });
+        }
+        if (!parsed.length) return;
+
+        /* Merge existing DOM channels + channels.json so nothing is ever lost */
+        var map = new Map();
+        links.forEach(function (a) {
+          var h = a.getAttribute('href');
+          if (h) map.set(h.toLowerCase(), { name: a.dataset.title || a.textContent.trim(), href: h });
+        });
+
+        var changed = false;
+        parsed.forEach(function (item) {
+          var key = item.href.toLowerCase();
+          var existing = map.get(key);
+          if (!existing || existing.name !== item.name) {
+            map.set(key, item);
+            changed = true;
+          }
+        });
+
+        if (!changed && map.size === links.length) return;
+
+        var merged = Array.from(map.values()).sort(function (a, b) {
+          return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+        });
+
+        var frag = document.createDocumentFragment();
+        var newLinks = [];
+        merged.forEach(function (item, idx) {
+          var a = document.createElement('a');
+          a.setAttribute('href', item.href);
+          a.dataset.title = item.name;
+          a.textContent = item.name;
+          decorateLink(a, idx);
+          frag.appendChild(a);
+          newLinks.push(a);
+        });
+
+        nav.innerHTML = '';
+        nav.appendChild(frag);
+        links = newLinks;
+        syncPinnedUI();
+        applyFilter();
+      })
+      .catch(function () {});
+  }
+
+  syncFromChannelsJson();
+
   queryEl.addEventListener('input', applyFilter);
 
   clearBtn.addEventListener('pointerdown', function (e) {
@@ -1316,7 +1395,6 @@
     queryEl.focus();
   });
 
-  /* ---------- Pin Button Handler inside Channel Cards ---------- */
   nav.addEventListener('click', function (e) {
     var pinBtn = e.target.closest('.pin-btn');
     if (!pinBtn) return;
@@ -1337,7 +1415,6 @@
     applyFilter();
   });
 
-  /* ---------- Tune Random Channel Action Button ---------- */
   randomBtn.addEventListener('click', function () {
     var pool = links.filter(function (a) { return !a.classList.contains('hidden'); });
     if (!pool.length) pool = links;
@@ -1345,7 +1422,6 @@
     if (pick) window.location.href = pick.getAttribute('href');
   });
 
-  /* ---------- Layout View Switcher (Grid vs Compact) ---------- */
   function setViewMode(compact) {
     nav.classList.toggle('compact-view', compact);
     gridViewBtn.setAttribute('aria-pressed', compact ? 'false' : 'true');
@@ -1354,7 +1430,6 @@
   gridViewBtn.addEventListener('click', function () { setViewMode(false); });
   listViewBtn.addEventListener('click', function () { setViewMode(true); });
 
-  /* ---------- Sticky Bar Docking Observer ---------- */
   if ('IntersectionObserver' in window && emblem) {
     new IntersectionObserver(function (entries) {
       chromeDeck.classList.toggle('docked', !entries[0].isIntersecting);
@@ -1396,8 +1471,6 @@
     s.dampingCoeff = 2 * dampingRatio * omega;
   }
 
-  /* Sub-steps real elapsed time at 240Hz precision so 60Hz, 120Hz, 144Hz & 240Hz
-     monitors all integrate along the exact same physical curve without jitter */
   function stepSpring(s, dt) {
     var remaining = dt;
     var maxStep = 1 / 240;
